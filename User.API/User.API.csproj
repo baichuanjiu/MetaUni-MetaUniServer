@@ -1,4 +1,4 @@
-<Project Sdk="Microsoft.NET.Sdk.Web">
+﻿<Project Sdk="Microsoft.NET.Sdk.Web">
 
   <PropertyGroup>
     <TargetFramework>net7.0</TargetFramework>
@@ -6,12 +6,26 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <UserSecretsId>1e343a4e-110b-4aec-80a0-c7350eeeaa96</UserSecretsId>
     <DockerDefaultTargetOS>Linux</DockerDefaultTargetOS>
+    <DockerComposeProjectPath>..\docker-compose.dcproj</DockerComposeProjectPath>
   </PropertyGroup>
 
   <ItemGroup>
+    <PackageReference Include="Consul" Version="1.6.10.9" />
+    <PackageReference Include="Consul.AspNetCore" Version="1.6.10.9" />
     <PackageReference Include="Microsoft.AspNetCore.OpenApi" Version="7.0.5" />
+    <PackageReference Include="Microsoft.Extensions.Caching.StackExchangeRedis" Version="7.0.5" />
     <PackageReference Include="Microsoft.VisualStudio.Azure.Containers.Tools.Targets" Version="1.17.2" />
     <PackageReference Include="Swashbuckle.AspNetCore" Version="6.4.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Folder Include="Controllers\Login\" />
+    <Folder Include="Controllers\Profile\" />
+    <Folder Include="Controllers\Friends\" />
+    <Folder Include="Controllers\Groups\" />
+    <Folder Include="MinIO\" />
+    <Folder Include="Models\" />
+    <Folder Include="DataContext\" />
   </ItemGroup>
 
 </Project>
