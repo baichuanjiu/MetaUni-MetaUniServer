@@ -12,20 +12,21 @@
   <ItemGroup>
     <PackageReference Include="Consul" Version="1.6.10.9" />
     <PackageReference Include="Consul.AspNetCore" Version="1.6.10.9" />
+    <PackageReference Include="Microsoft.AspNetCore.Diagnostics.EntityFrameworkCore" Version="7.0.5" />
     <PackageReference Include="Microsoft.AspNetCore.OpenApi" Version="7.0.5" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore" Version="7.0.5" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.SqlServer" Version="7.0.5" />
     <PackageReference Include="Microsoft.Extensions.Caching.StackExchangeRedis" Version="7.0.5" />
     <PackageReference Include="Microsoft.VisualStudio.Azure.Containers.Tools.Targets" Version="1.17.2" />
     <PackageReference Include="Swashbuckle.AspNetCore" Version="6.4.0" />
   </ItemGroup>
 
   <ItemGroup>
-    <Folder Include="Controllers\Login\" />
     <Folder Include="Controllers\Profile\" />
-    <Folder Include="Controllers\Friends\" />
-    <Folder Include="Controllers\Groups\" />
+    <Folder Include="Controllers\Friend\" />
+    <Folder Include="Controllers\Group\" />
+    <Folder Include="Entities\Friend\" />
     <Folder Include="MinIO\" />
-    <Folder Include="Models\" />
-    <Folder Include="DataContext\" />
   </ItemGroup>
 
 </Project>

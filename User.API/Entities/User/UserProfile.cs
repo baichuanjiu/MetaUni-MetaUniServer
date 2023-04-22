@@ -6,6 +6,7 @@ namespace User.API.Entities.User
 {
     [Table("UserProfile")]
     [Index(nameof(UUID))]
+    [Index(nameof(Account))]
     public class UserProfile
     {
         [Key]

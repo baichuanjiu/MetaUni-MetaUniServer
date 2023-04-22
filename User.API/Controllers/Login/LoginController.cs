@@ -1,0 +1,185 @@
+﻿using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Caching.Distributed;
+using Microsoft.IdentityModel.Tokens;
+using System.IdentityModel.Tokens.Jwt;
+using System.Security.Claims;
+using System.Security.Cryptography;
+using System.Text;
+using User.API.DataContext.User;
+using User.API.ReusableClass;
+
+namespace User.API.Controllers.Login
+{
+    public class LoginForm
+    {
+        public LoginForm(string account, string password)
+        {
+            Account = account;
+            Password = password;
+        }
+
+        public string Account { get; set; }
+        public string Password { get; set; }
+    }
+    public class LoginResponseData
+    {
+        public LoginResponseData(string JWT, int UUID, string avatar, string nickname, DateTime updatedTime)
+        {
+            this.JWT = JWT;
+            this.UUID = UUID;
+            Avatar = avatar;
+            Nickname = nickname;
+            UpdatedTime = updatedTime;
+        }
+
+        public string JWT { get; set; }
+        public int UUID { get; set; }
+        public string Avatar { get; set; }
+        public string Nickname { get; set; }
+        public DateTime UpdatedTime { get; set; }
+    }
+    public class CheckAccountResponseData
+    {
+        public CheckAccountResponseData(string account, string avatar, string privateNickname)
+        {
+            Account = account;
+            Avatar = avatar;
+            PrivateNickname = privateNickname;
+        }
+
+        public string Account { get; set; }
+        public string Avatar { get; set; }
+        public string PrivateNickname { get; set; }
+    }
+
+    [ApiController]
+    [Route("/login")]
+    public class LoginController : Controller
+    {
+        //依赖注入
+        private readonly UserContext _userContext;
+        private readonly IConfiguration _configuration;
+        private readonly IDistributedCache _distributedCache;
+
+        public LoginController(UserContext userContext, IConfiguration configuration, IDistributedCache distributedCache)
+        {
+            _userContext = userContext;
+            _configuration = configuration;
+            _distributedCache = distributedCache;
+        }
+
+        //用户登录
+        [HttpPost]
+        public async Task<IActionResult> Login(LoginForm loginForm)
+        {
+            //对密码进行MD5加密
+            byte[] bytePassword = Encoding.UTF8.GetBytes(loginForm.Password);
+            byte[] byteMD5Password = MD5.HashData(bytePassword);
+            StringBuilder builder = new();
+            foreach (var item in byteMD5Password)
+            {
+                builder.Append(item.ToString("X2"));
+            }
+            string MD5Password = builder.ToString();
+
+            //查找数据库
+            var targetAccount = await _userContext.UserAccounts.Select(account => new { account.Account, account.Password }).FirstOrDefaultAsync(account => account.Account == loginForm.Account);
+            if (targetAccount != null)
+            {
+                if (targetAccount.Password == MD5Password)
+                {
+                    var targetProfile = await _userContext.UserProfiles.Select(profile => new { profile.Account, profile.UUID, profile.Avatar, profile.Nickname, profile.UpdatedTime }).FirstOrDefaultAsync(profile => profile.Account == loginForm.Account);
+                    if (targetProfile != null)
+                    {
+                        //生成JWT
+                        var claims = new List<Claim>();
+                        int UUID = targetProfile.UUID;
+                        claims.Add(new Claim("UUID", UUID.ToString()));
+                        string key = _configuration["JWT:Key"]!;
+                        DateTime expires = DateTime.Now.AddDays(365);
+                        byte[] secBytes = Encoding.UTF8.GetBytes(key);
+                        var secKey = new SymmetricSecurityKey(secBytes);
+                        var credentials = new SigningCredentials(secKey, SecurityAlgorithms.HmacSha256Signature);
+                        var tokenDescriptor = new JwtSecurityToken(claims: claims, expires: expires, signingCredentials: credentials);
+                        string JWT = new JwtSecurityTokenHandler().WriteToken(tokenDescriptor);
+
+                        //设置JWT在Redis中的过期时间
+                        var options = new DistributedCacheEntryOptions().SetAbsoluteExpiration(TimeSpan.FromDays(365));
+                        options.SetSlidingExpiration(TimeSpan.FromDays(30));
+
+                        //将JWT存入Redis
+                        await _distributedCache.SetStringAsync(UUID.ToString(), JWT, options);
+
+                        ResponseT<LoginResponseData> loginSuccessed = new(0, "登录成功", new LoginResponseData(JWT, UUID, targetProfile.Avatar, targetProfile.Nickname, targetProfile.UpdatedTime));
+
+                        return Ok(loginSuccessed);
+                    }
+                }
+            }
+
+            ResponseT<string> loginFailed = new(1, "账号或密码错误");
+            return Ok(loginFailed);
+        }
+
+        //检查登录状态
+        [HttpGet("check")]
+        public async Task<IActionResult> CheckLoginStatus([FromHeader] string JWT, [FromHeader] int UUID)
+        {
+            string? CurrentJWT = await _distributedCache.GetStringAsync(UUID.ToString());
+            if (CurrentJWT == null)
+            {
+                ResponseT<string> invalidLoginStatus = new(1, "用户Token已过期，请重新登录");
+                return Ok(invalidLoginStatus);
+            }
+            else if (CurrentJWT != JWT)
+            {
+                ResponseT<string> invalidLoginStatus = new(2, "账号在另外一台设备登录，若并非您的操作，请及时联系客服反馈情况");
+                return Ok(invalidLoginStatus);
+            }
+            else
+            {
+                ResponseT<string> validLoginStatus = new(0, "该Token有效");
+                return Ok(validLoginStatus);
+            }
+        }
+
+        //查找是否有该账号
+        [HttpGet("check/{checkAccount}")]
+        public async Task<IActionResult> CheckAccount(string checkAccount)
+        {
+            //查找数据库
+            var targetAccount = await _userContext.UserAccounts.Select(account => account.Account).FirstOrDefaultAsync(account => account == checkAccount);
+            if (targetAccount != null)
+            {
+                var targetProfile = await _userContext.UserProfiles.Select(profile => new { profile.Account, profile.Avatar, profile.Nickname }).FirstOrDefaultAsync(profile => profile.Account == checkAccount);
+                if (targetProfile != null)
+                {
+                    string nickname = targetProfile.Nickname;
+                    string privateNickname;
+                    if (nickname.Length == 1)
+                    {
+                        privateNickname = "*";
+                    }
+                    else if (nickname.Length == 2)
+                    {
+                        privateNickname = nickname[0] + "*";
+                    }
+                    else
+                    {
+                        privateNickname = nickname[..1];
+                        for (int i = 1; i < nickname.Length - 1; i++)
+                        {
+                            privateNickname += "*";
+                        }
+                        privateNickname += nickname[^1];
+                    }
+                    ResponseT<CheckAccountResponseData> checkSuccessed = new(0, "该账号有效", new CheckAccountResponseData(checkAccount, targetProfile.Avatar, privateNickname));
+                    return Ok(checkSuccessed);
+                }
+            }
+            ResponseT<string> checkFailed = new(1, "该账号不存在");
+            return Ok(checkFailed);
+        }
+    }
+}

@@ -2,6 +2,8 @@ using Microsoft.AspNetCore.Mvc.Filters;
 using User.API.Filters;
 using Consul;
 using Consul.AspNetCore;
+using User.API.DataContext.User;
+using Microsoft.EntityFrameworkCore;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -29,6 +31,13 @@ builder.Services.AddConsulServiceRegistration(options =>
     options.Port = int.Parse(builder.Configuration["Consul:Port"]!);
 });
 
+//配置DbContext
+builder.Services.AddDbContext<UserContext>(options =>
+  options.UseSqlServer(builder.Configuration.GetConnectionString("UserContext")));
+
+builder.Services.AddDatabaseDeveloperPageExceptionFilter();
+
+
 //配置Redis
 builder.Services.AddStackExchangeRedisCache(options =>
 {
@@ -46,10 +55,19 @@ if (app.Environment.IsDevelopment())
     app.UseSwaggerUI();
 }
 
+//确保数据库创建
+using (var scope = app.Services.CreateScope())
+{
+    var services = scope.ServiceProvider;
+
+    var userContext = services.GetRequiredService<UserContext>();
+    userContext.Database.EnsureCreated();
+}
+
 //启用健康状态检查中间件
 app.UseHealthChecks("/health");
 
-app.UseHttpsRedirection();
+//app.UseHttpsRedirection();
 
 app.UseAuthorization();
 
