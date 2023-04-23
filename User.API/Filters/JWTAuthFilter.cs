@@ -19,8 +19,8 @@ namespace User.API.Filters
         async Task IAsyncActionFilter.OnActionExecutionAsync(ActionExecutingContext context, ActionExecutionDelegate next)
         {
             //验证JWT
-            string? CurrentJWT = await _distributedCache.GetStringAsync(context.ActionArguments["UUID"]!.ToString()!);
-            if (CurrentJWT != context.ActionArguments["JWT"] as string)
+            string? currentJWT = await _distributedCache.GetStringAsync(context.ActionArguments["UUID"]!.ToString()!);
+            if (currentJWT != context.ActionArguments["JWT"] as string)
             {
                 ResponseT<string> authorizationFailed = new(1, "使用了无效的JWT，请重新登录");
                 context.Result = new ContentResult

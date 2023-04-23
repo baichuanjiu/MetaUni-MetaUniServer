@@ -41,16 +41,18 @@ namespace User.API.Controllers.Login
     }
     public class CheckAccountResponseData
     {
-        public CheckAccountResponseData(string account, string avatar, string privateNickname)
+        public CheckAccountResponseData(string account, string avatar, string privateNickname, string RSAPublicKey)
         {
             Account = account;
             Avatar = avatar;
             PrivateNickname = privateNickname;
+            this.RSAPublicKey = RSAPublicKey;
         }
 
         public string Account { get; set; }
         public string Avatar { get; set; }
         public string PrivateNickname { get; set; }
+        public string RSAPublicKey { get; set; }
     }
 
     [ApiController]
@@ -73,39 +75,54 @@ namespace User.API.Controllers.Login
         [HttpPost]
         public async Task<IActionResult> Login(LoginForm loginForm)
         {
-            //对密码进行MD5加密
-            byte[] bytePassword = Encoding.UTF8.GetBytes(loginForm.Password);
-            byte[] byteMD5Password = MD5.HashData(bytePassword);
-            StringBuilder builder = new();
-            foreach (var item in byteMD5Password)
-            {
-                builder.Append(item.ToString("X2"));
-            }
-            string MD5Password = builder.ToString();
 
             //查找数据库
             var targetAccount = await _userContext.UserAccounts.Select(account => new { account.Account, account.Password }).FirstOrDefaultAsync(account => account.Account == loginForm.Account);
             if (targetAccount != null)
             {
+                //从Redis中获取RSA私钥
+                string? rsaPrivateKey = await _distributedCache.GetStringAsync(loginForm.Account + "RSAPrivateKey");
+                if (rsaPrivateKey == null)
+                {
+                    return Ok(new ResponseT<string>(1, "登录超时，请重新尝试"));
+                }
+
+                //将加密后的密码转化为byte[]
+                byte[] byteRSAPassword = Encoding.Unicode.GetBytes(loginForm.Password).Where((item, index) => index % 2 == 0).ToArray();
+
+                //使用RSA私钥进行解密
+                RSACryptoServiceProvider rsaProvider = new(2048);
+                rsaProvider.ImportFromPem(rsaPrivateKey);
+                byte[] bytePassword = rsaProvider.Decrypt(byteRSAPassword, false);
+
+                //对密码进行MD5加密
+                byte[] byteMD5Password = MD5.HashData(bytePassword);
+                StringBuilder builder = new();
+                foreach (var item in byteMD5Password)
+                {
+                    builder.Append(item.ToString("X2"));
+                }
+
+                string MD5Password = builder.ToString();
                 if (targetAccount.Password == MD5Password)
                 {
                     var targetProfile = await _userContext.UserProfiles.Select(profile => new { profile.Account, profile.UUID, profile.Avatar, profile.Nickname, profile.UpdatedTime }).FirstOrDefaultAsync(profile => profile.Account == loginForm.Account);
                     if (targetProfile != null)
                     {
                         //生成JWT
-                        var claims = new List<Claim>();
+                        List<Claim> claims = new();
                         int UUID = targetProfile.UUID;
                         claims.Add(new Claim("UUID", UUID.ToString()));
                         string key = _configuration["JWT:Key"]!;
                         DateTime expires = DateTime.Now.AddDays(365);
                         byte[] secBytes = Encoding.UTF8.GetBytes(key);
-                        var secKey = new SymmetricSecurityKey(secBytes);
-                        var credentials = new SigningCredentials(secKey, SecurityAlgorithms.HmacSha256Signature);
-                        var tokenDescriptor = new JwtSecurityToken(claims: claims, expires: expires, signingCredentials: credentials);
+                        SymmetricSecurityKey secKey = new(secBytes);
+                        SigningCredentials credentials = new(secKey, SecurityAlgorithms.HmacSha256Signature);
+                        JwtSecurityToken tokenDescriptor = new(claims: claims, expires: expires, signingCredentials: credentials);
                         string JWT = new JwtSecurityTokenHandler().WriteToken(tokenDescriptor);
 
                         //设置JWT在Redis中的过期时间
-                        var options = new DistributedCacheEntryOptions().SetAbsoluteExpiration(TimeSpan.FromDays(365));
+                        DistributedCacheEntryOptions options = new DistributedCacheEntryOptions().SetAbsoluteExpiration(TimeSpan.FromDays(365));
                         options.SetSlidingExpiration(TimeSpan.FromDays(30));
 
                         //将JWT存入Redis
@@ -118,7 +135,7 @@ namespace User.API.Controllers.Login
                 }
             }
 
-            ResponseT<string> loginFailed = new(1, "账号或密码错误");
+            ResponseT<string> loginFailed = new(2, "账号或密码错误");
             return Ok(loginFailed);
         }
 
@@ -144,7 +161,7 @@ namespace User.API.Controllers.Login
             }
         }
 
-        //查找是否有该账号
+        //查找数据库中是否存在该账号
         [HttpGet("check/{checkAccount}")]
         public async Task<IActionResult> CheckAccount(string checkAccount)
         {
@@ -174,7 +191,20 @@ namespace User.API.Controllers.Login
                         }
                         privateNickname += nickname[^1];
                     }
-                    ResponseT<CheckAccountResponseData> checkSuccessed = new(0, "该账号有效", new CheckAccountResponseData(checkAccount, targetProfile.Avatar, privateNickname));
+
+                    //生成RSA公钥和私钥（PKCS#1）
+                    RSACryptoServiceProvider rsaProvider = new(2048);
+                    string publicKey = rsaProvider.ExportRSAPublicKeyPem();
+                    string privateKey = rsaProvider.ExportRSAPrivateKeyPem();
+
+                    //设置RSA私钥在Redis中的过期时间
+                    DistributedCacheEntryOptions options = new DistributedCacheEntryOptions().SetAbsoluteExpiration(TimeSpan.FromMinutes(10));
+                    options.SetSlidingExpiration(TimeSpan.FromMinutes(5));
+
+                    //将RSA私钥存入Redis
+                    await _distributedCache.SetStringAsync(checkAccount + "RSAPrivateKey", privateKey, options);
+
+                    ResponseT<CheckAccountResponseData> checkSuccessed = new(0, "该账号有效", new CheckAccountResponseData(checkAccount, targetProfile.Avatar, privateNickname, publicKey));
                     return Ok(checkSuccessed);
                 }
             }

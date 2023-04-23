@@ -11,7 +11,7 @@ services:
       - 46665:443
     environment:
       Consul__ID: User.API.46664
-      Consul__Name: User.API
+      Consul__Name: MetaUni.User.API
       Consul__IP: host.docker.internal
       Consul__Port: 46664
 
@@ -25,6 +25,6 @@ services:
       - 46669:443
     environment:
       Consul__ID: User.API.46668
-      Consul__Name: User.API
+      Consul__Name: MetaUni.User.API
       Consul__IP: host.docker.internal
       Consul__Port: 46668
