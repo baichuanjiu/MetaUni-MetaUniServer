@@ -1,8 +1,10 @@
 ﻿using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Caching.Distributed;
+using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
 using Serilog.Context;
+using System;
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Security.Cryptography;
@@ -60,7 +62,7 @@ namespace User.API.Controllers.Login
     [Route("/login")]
     public class LoginController : Controller
     {
-        //依赖注入s
+        //依赖注入
         private readonly UserContext _userContext;
         private readonly IConfiguration _configuration;
         private readonly IDistributedCache _distributedCache;
@@ -74,13 +76,10 @@ namespace User.API.Controllers.Login
             _logger = logger;
         }
 
-
-
         //用户登录
         [HttpPost]
         public async Task<IActionResult> Login(LoginForm loginForm)
         {
-
             //查找数据库
             var targetAccount = await _userContext.UserAccounts.Select(account => new { account.Account, account.Password }).FirstOrDefaultAsync(account => account.Account == loginForm.Account);
             if (targetAccount != null)
@@ -89,6 +88,7 @@ namespace User.API.Controllers.Login
                 string? rsaPrivateKey = await _distributedCache.GetStringAsync(loginForm.Account + "RSAPrivateKey");
                 if (rsaPrivateKey == null)
                 {
+                    _logger.LogWarning("Warning：账号[ {account} ]登录时无法获取RSA私钥，可能原因为登录耗时过久，RSA私钥已过期，或用户正在尝试绕过前端进行操作。", loginForm.Account);
                     return Ok(new ResponseT<string>(1, "登录超时，请重新尝试"));
                 }
 
@@ -98,7 +98,16 @@ namespace User.API.Controllers.Login
                 //使用RSA私钥进行解密
                 RSACryptoServiceProvider rsaProvider = new(2048);
                 rsaProvider.ImportFromPem(rsaPrivateKey);
-                byte[] bytePassword = rsaProvider.Decrypt(byteRSAPassword, false);
+
+                byte[] bytePassword = Array.Empty<byte>();
+                try
+                {
+                    bytePassword = rsaProvider.Decrypt(byteRSAPassword, false);
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError("Error：账号[ {account} ]登录时使用了错误的RSA加密结果，导致无法解密，可能同时存在多个终端尝试使用此账号进行登录，或用户正在尝试绕过前端进行操作。报错内容为[ {ex} ]。", loginForm.Account, ex);
+                }
 
                 //对密码进行MD5加密
                 byte[] byteMD5Password = MD5.HashData(bytePassword);
@@ -111,6 +120,9 @@ namespace User.API.Controllers.Login
 
                 if (targetAccount.Password == MD5Password)
                 {
+                    //从Redis中删除RSA私钥
+                    await _distributedCache.RemoveAsync(loginForm.Account + "RSAPrivateKey");
+
                     var targetProfile = await _userContext.UserProfiles.Select(profile => new { profile.Account, profile.UUID, profile.Avatar, profile.Nickname, profile.UpdatedTime }).FirstOrDefaultAsync(profile => profile.Account == loginForm.Account);
                     if (targetProfile != null)
                     {
@@ -139,6 +151,10 @@ namespace User.API.Controllers.Login
                     }
                 }
             }
+            else
+            {
+                _logger.LogWarning("Warning：账号[ {account} ]登录时使用了不存在的账号，可能原因为用户正在尝试绕过前端进行操作。", loginForm.Account);
+            }
 
             ResponseT<string> loginFailed = new(2, "账号或密码错误");
             return Ok(loginFailed);
@@ -151,11 +167,13 @@ namespace User.API.Controllers.Login
             string? CurrentJWT = await _distributedCache.GetStringAsync(UUID.ToString());
             if (CurrentJWT == null)
             {
+                _logger.LogWarning("Warning：用户[ {UUID} ]检查登录状态时，Redis中不存在此用户的Token，可能原因为用户Token已过期，或用户正在尝试绕过前端进行操作。", UUID);
                 ResponseT<string> invalidLoginStatus = new(1, "用户Token已过期，请重新登录");
                 return Ok(invalidLoginStatus);
             }
             else if (CurrentJWT != JWT)
             {
+                _logger.LogWarning("Warning：用户[ {UUID} ]检查登录状态时，Token不匹配，可能原因为该账号已在另一台设备上登录，或用户正在尝试绕过前端进行操作。", UUID);
                 ResponseT<string> invalidLoginStatus = new(2, "账号在另外一台设备登录，若并非您的操作，请及时联系客服反馈情况");
                 return Ok(invalidLoginStatus);
             }
