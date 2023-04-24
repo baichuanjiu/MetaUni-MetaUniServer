@@ -103,7 +103,7 @@ namespace User.API.Controllers.Login
                 }
                 catch (Exception ex)
                 {
-                    _logger.LogError("Error：账号[ {account} ]登录时使用了错误的RSA加密结果，导致无法解密，可能同时存在多个终端尝试使用此账号进行登录，或用户正在尝试绕过前端进行操作。报错内容为[ {ex} ]。", loginForm.Account, ex);
+                    _logger.LogError("Error：账号[ {account} ]登录时使用了错误的RSA加密结果，导致无法解密，可能同时存在多个终端尝试使用此账号进行登录，或用户正在尝试绕过前端进行操作。报错信息为[ {ex} ]。", loginForm.Account, ex);
                 }
 
                 //对密码进行MD5加密
