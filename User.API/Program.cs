@@ -4,12 +4,18 @@ using Consul;
 using Consul.AspNetCore;
 using User.API.DataContext.User;
 using Microsoft.EntityFrameworkCore;
+using Serilog;
 
 var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
+
+//配置Serilog
+var configuration = new ConfigurationBuilder().SetBasePath(Directory.GetCurrentDirectory()).AddJsonFile("appsettings.json").Build();
+Log.Logger = new LoggerConfiguration().ReadFrom.Configuration(configuration).CreateLogger();
+builder.Host.UseSerilog();
 
 //添加健康检查
 builder.Services.AddHealthChecks();
@@ -37,7 +43,6 @@ builder.Services.AddDbContext<UserContext>(options =>
 
 builder.Services.AddDatabaseDeveloperPageExceptionFilter();
 
-
 //配置Redis
 builder.Services.AddStackExchangeRedisCache(options =>
 {
@@ -48,6 +53,9 @@ builder.Services.AddStackExchangeRedisCache(options =>
 builder.Services.AddScoped<IAsyncActionFilter, JWTAuthFilterService>();
 
 var app = builder.Build();
+
+//使用Serilog处理请求日志
+app.UseSerilogRequestLogging();
 
 if (app.Environment.IsDevelopment())
 {

@@ -2,6 +2,7 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Caching.Distributed;
 using Microsoft.IdentityModel.Tokens;
+using Serilog.Context;
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Security.Cryptography;
@@ -59,17 +60,21 @@ namespace User.API.Controllers.Login
     [Route("/login")]
     public class LoginController : Controller
     {
-        //依赖注入
+        //依赖注入s
         private readonly UserContext _userContext;
         private readonly IConfiguration _configuration;
         private readonly IDistributedCache _distributedCache;
+        private readonly ILogger<LoginController> _logger;
 
-        public LoginController(UserContext userContext, IConfiguration configuration, IDistributedCache distributedCache)
+        public LoginController(UserContext userContext, IConfiguration configuration, IDistributedCache distributedCache, ILogger<LoginController> logger)
         {
             _userContext = userContext;
             _configuration = configuration;
             _distributedCache = distributedCache;
+            _logger = logger;
         }
+
+
 
         //用户登录
         [HttpPost]
@@ -102,8 +107,8 @@ namespace User.API.Controllers.Login
                 {
                     builder.Append(item.ToString("X2"));
                 }
-
                 string MD5Password = builder.ToString();
+
                 if (targetAccount.Password == MD5Password)
                 {
                     var targetProfile = await _userContext.UserProfiles.Select(profile => new { profile.Account, profile.UUID, profile.Avatar, profile.Nickname, profile.UpdatedTime }).FirstOrDefaultAsync(profile => profile.Account == loginForm.Account);
