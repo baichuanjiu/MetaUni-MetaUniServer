@@ -25,7 +25,7 @@ namespace User.API.Filters
             string? currentJWT = await _distributedCache.GetStringAsync(context.ActionArguments["UUID"]!.ToString()!);
             if (currentJWT != context.ActionArguments["JWT"] as string)
             {
-                _logger.LogWarning("Warning：用户[ {UUID} ]在访问[ {controller} ]时使用了无效的JWT", context.ActionArguments["UUID"]!.ToString()!, context.Controller.ToString());
+                _logger.LogWarning("Warning：用户[ {UUID} ]在访问[ {controller} ]时使用了无效的JWT。", context.ActionArguments["UUID"]!.ToString()!, context.Controller.ToString());
                 ResponseT<string> authorizationFailed = new(1, "使用了无效的JWT，请重新登录");
                 context.Result = new ContentResult
                 {

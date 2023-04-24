@@ -1,10 +1,11 @@
-using Microsoft.AspNetCore.Mvc.Filters;
 using User.API.Filters;
 using Consul;
 using Consul.AspNetCore;
 using User.API.DataContext.User;
 using Microsoft.EntityFrameworkCore;
 using Serilog;
+using Minio.AspNetCore;
+using User.API.MinIO;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -49,8 +50,17 @@ builder.Services.AddStackExchangeRedisCache(options =>
     options.Configuration = builder.Configuration.GetConnectionString("Redis");
 });
 
+//≈‰÷√MinIO
+builder.Services.AddMinio(options =>
+{
+    options.Endpoint = builder.Configuration["MinIO:Endpoint"]!;
+    options.AccessKey = builder.Configuration["MinIO:AccessKey"]!;
+    options.SecretKey = builder.Configuration["MinIO:SecretKey"]!;
+});
+builder.Services.AddScoped<IMinIOService, MinIOService>();
+
 //≈‰÷√Filters
-builder.Services.AddScoped<IAsyncActionFilter, JWTAuthFilterService>();
+builder.Services.AddScoped<JWTAuthFilterService>();
 
 var app = builder.Build();
 
