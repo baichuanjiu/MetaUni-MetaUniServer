@@ -56,6 +56,8 @@ namespace User.API.Controllers.Profile
             _logger = logger;
         }
 
+        //获取个人资料
+        //后续应当增加部分返回值：isFriend等
         [HttpGet("{queryUUID}")]
         public async Task<IActionResult> GetProfile(int queryUUID, [FromHeader] string JWT, [FromHeader] int UUID)
         {
@@ -73,6 +75,7 @@ namespace User.API.Controllers.Profile
             return Ok(getProfileSuccessed);
         }
 
+        //用户上传头像
         [HttpPut("avatar")]
         public async Task<IActionResult> UploadAvatar([FromForm] IFormFile avatar, [FromHeader] string JWT, [FromHeader] int UUID)
         {
