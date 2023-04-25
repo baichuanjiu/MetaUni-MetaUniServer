@@ -1,5 +1,4 @@
-﻿using Microsoft.Extensions.Configuration;
-using Minio;
+﻿using Minio;
 
 namespace User.API.MinIO
 {

@@ -52,7 +52,6 @@ var app = builder.Build();
 //使用Serilog处理请求日志
 app.UseSerilogRequestLogging();
 
-// Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())
 {
     app.UseSwagger();

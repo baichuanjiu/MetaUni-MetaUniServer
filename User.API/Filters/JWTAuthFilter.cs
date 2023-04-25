@@ -2,7 +2,6 @@
 using Microsoft.AspNetCore.Mvc.Filters;
 using Microsoft.Extensions.Caching.Distributed;
 using System.Text.Json;
-using User.API.Controllers.Profile;
 using User.API.ReusableClass;
 
 namespace User.API.Filters
