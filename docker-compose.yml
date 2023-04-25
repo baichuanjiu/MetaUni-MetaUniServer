@@ -28,3 +28,46 @@ services:
       Consul__Name: MetaUni.User.API
       Consul__IP: host.docker.internal
       Consul__Port: 46668
+
+  websocket.api:
+    image: ${DOCKER_REGISTRY-}websocketapi
+    build:
+      context: .
+      dockerfile: WebSocket.API/Dockerfile
+    ports:
+      - 46674:80
+      - 46675:443
+    environment:
+      Consul__ID: WebSocket.API.46674
+      Consul__Name: MetaUni.WebSocket.API
+      Consul__IP: host.docker.internal
+      Consul__Port: 46674
+
+  websocket.api2:
+    image: ${DOCKER_REGISTRY-}websocketapi
+    build:
+      context: .
+      dockerfile: WebSocket.API/Dockerfile
+    ports:
+      - 46676:80
+      - 46677:443
+    environment:
+      Consul__ID: WebSocket.API.46676
+      Consul__Name: MetaUni.WebSocket.API
+      Consul__IP: host.docker.internal
+      Consul__Port: 46676
+
+  websocket.api3:
+    image: ${DOCKER_REGISTRY-}websocketapi
+    build:
+      context: .
+      dockerfile: WebSocket.API/Dockerfile
+    ports:
+      - 46678:80
+      - 46679:443
+    environment:
+      Consul__ID: WebSocket.API.46678
+      Consul__Name: MetaUni.WebSocket.API
+      Consul__IP: host.docker.internal
+      Consul__Port: 46678
+

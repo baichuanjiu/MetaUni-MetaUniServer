@@ -1,13 +1,56 @@
+using Consul;
+using Consul.AspNetCore;
+using Serilog;
+using WebSocket.API;
+using WebSocket.API.Filters;
+
 var builder = WebApplication.CreateBuilder(args);
 
-// Add services to the container.
-
 builder.Services.AddControllers();
-// Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
+//配置Serilog
+var configuration = new ConfigurationBuilder().SetBasePath(Directory.GetCurrentDirectory()).AddJsonFile("appsettings.json").Build();
+Log.Logger = new LoggerConfiguration().ReadFrom.Configuration(configuration).CreateLogger();
+builder.Host.UseSerilog();
+
+//添加健康检查
+builder.Services.AddHealthChecks();
+
+//配置Consul
+builder.Services.AddConsul(options => options.Address = new Uri(builder.Configuration["Consul:Address"]!));
+builder.Services.AddConsulServiceRegistration(options =>
+{
+    options.Check = new AgentServiceCheck()
+    {
+        DeregisterCriticalServiceAfter = TimeSpan.FromSeconds(5), //服务停止运行后多长时间自动注销该服务
+        Interval = TimeSpan.FromSeconds(60), //心跳检查间隔
+        HTTP = "http://" + builder.Configuration["Consul:IP"]! + ":" + builder.Configuration["Consul:Port"]! + "/health", //健康检查地址
+        Timeout = TimeSpan.FromSeconds(10), //超时时间
+    };
+    options.ID = builder.Configuration["Consul:ID"]!;
+    options.Name = builder.Configuration["Consul:Name"]!;
+    options.Address = builder.Configuration["Consul:IP"]!;
+    options.Port = int.Parse(builder.Configuration["Consul:Port"]!);
+});
+
+//配置Redis
+builder.Services.AddStackExchangeRedisCache(options =>
+{
+    options.Configuration = builder.Configuration.GetConnectionString("Redis");
+});
+
+//配置WebSocketsManager（将所有建立连接的WebSockets当作Static资源进行处理）
+builder.Services.AddSingleton<WebSocketsManager>();
+
+//配置Filters
+builder.Services.AddScoped<JWTAuthFilterService>();
+
 var app = builder.Build();
+
+//使用Serilog处理请求日志
+app.UseSerilogRequestLogging();
 
 // Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())
@@ -16,7 +59,18 @@ if (app.Environment.IsDevelopment())
     app.UseSwaggerUI();
 }
 
-app.UseHttpsRedirection();
+//启用健康状态检查中间件
+app.UseHealthChecks("/health");
+
+//配置WebSocket
+var webSocketOptions = new WebSocketOptions
+{
+    KeepAliveInterval = TimeSpan.FromMinutes(2)
+};
+
+app.UseWebSockets(webSocketOptions);
+
+//app.UseHttpsRedirection();
 
 app.UseAuthorization();
 
