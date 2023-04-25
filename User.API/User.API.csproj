@@ -27,7 +27,6 @@
   <ItemGroup>
     <Folder Include="Controllers\Friend\" />
     <Folder Include="Controllers\Group\" />
-    <Folder Include="Entities\Friend\" />
   </ItemGroup>
 
 </Project>
