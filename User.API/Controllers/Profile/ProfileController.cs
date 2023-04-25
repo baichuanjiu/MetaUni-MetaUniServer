@@ -1,5 +1,4 @@
-﻿using Azure;
-using Microsoft.AspNetCore.Mvc;
+﻿using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using System.Text.Json;
 using User.API.DataContext.User;
