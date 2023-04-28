@@ -4,6 +4,7 @@ using Message.API.DataContext.Message;
 using Message.API.Filters;
 using Microsoft.EntityFrameworkCore;
 using Serilog;
+using User.API.DataContext.User;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -39,6 +40,9 @@ builder.Services.AddConsulServiceRegistration(options =>
 //≈‰÷√DbContext
 builder.Services.AddDbContext<MessageContext>(options =>
   options.UseSqlServer(builder.Configuration.GetConnectionString("MessageContext")));
+
+builder.Services.AddDbContext<UserContext>(options =>
+  options.UseSqlServer(builder.Configuration.GetConnectionString("UserContext")));
 
 builder.Services.AddDatabaseDeveloperPageExceptionFilter();
 

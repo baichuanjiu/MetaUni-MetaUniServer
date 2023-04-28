@@ -1,0 +1,96 @@
+﻿using Message.API.DataContext.Message;
+using Message.API.Filters;
+using Message.API.ReusableClass;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
+using User.API.Controllers.Profile;
+using User.API.DataContext.User;
+
+namespace Message.API.Controllers.Chat
+{
+    public class SyncChatsResponseData
+    {
+        public SyncChatsResponseData(List<Entities.Chat.Chat> chatsList, List<BriefChatTargetInformation> briefChatTargetInformationList, DateTime updatedTime)
+        {
+            ChatsList = chatsList;
+            BriefChatTargetInformationList = briefChatTargetInformationList;
+            UpdatedTime = updatedTime;
+        }
+
+        public List<Entities.Chat.Chat> ChatsList { get; set; }
+        public List<BriefChatTargetInformation> BriefChatTargetInformationList { get; set; }
+        public DateTime UpdatedTime { get; set; }
+    }
+
+    public class BriefChatTargetInformation
+    {
+        public BriefChatTargetInformation(int targetType, int id, string avatar, string name, DateTime updatedTime)
+        {
+            TargetType = ((TargetTypeEnum)targetType).ToString();
+            Id = id;
+            Avatar = avatar;
+            Name = name;
+            UpdatedTime = updatedTime;
+        }
+
+        public enum TargetTypeEnum { user, group, system };
+        public string TargetType { get; set; }
+        public int Id { get; set; }
+        public string Avatar { get; set; }
+        public string Name { get; set; }
+        public DateTime UpdatedTime { get; set; }
+    }
+
+    [ApiController]
+    [Route("/chat")]
+    [ServiceFilter(typeof(JWTAuthFilterService), IsReusable = true)]
+    public class ChatController : Controller
+    {
+        //依赖注入
+        private readonly UserContext _userContext;
+        private readonly MessageContext _messageContext;
+        private readonly ILogger<ProfileController> _logger;
+
+        public ChatController(UserContext userContext, MessageContext messageContext, ILogger<ProfileController> logger)
+        {
+            _userContext = userContext;
+            _messageContext = messageContext;
+            _logger = logger;
+        }
+
+        [HttpGet("sync")]
+        public async Task<IActionResult> SyncChats([FromQuery] DateTime updatedTime, [FromHeader] string JWT, [FromHeader] int UUID)
+        {
+            //实际查询时间（冗余10分钟）
+            DateTime queryTime = updatedTime.AddMinutes(-10);
+
+            //查找数据库
+            DateTime currentUpdatedTime = _userContext.UserSyncTables.Select(table => new { table.UUID, UpdatedTime = table.UpdatedTimeForChats }).FirstOrDefaultAsync(table => table.UUID == UUID).Result!.UpdatedTime;
+            List<Entities.Chat.Chat> chatsList = await _messageContext.Chats.Where(chat => chat.UUID == UUID && chat.UpdatedTime > queryTime).ToListAsync();
+
+            List<BriefChatTargetInformation> briefChatTargetInformationList = new();
+
+            //后续还会添加group与system
+            List<int> usersList = new();
+            List<BriefChatTargetInformation> usersInformationList = new();
+            chatsList.ForEach(chat =>
+            {
+                if (chat.IsWithOtherUser)
+                {
+                    usersList.Add(chat.TargetId);
+                }
+            });
+            usersInformationList = usersList
+                .Join(_userContext.UserProfiles.Select(profile => new { profile.UUID, profile.Avatar, profile.Nickname, profile.UpdatedTime }),
+                Id => Id, profile => profile.UUID,
+                (Id, profile) => new BriefChatTargetInformation(0, profile.UUID, profile.Avatar, profile.Nickname, profile.UpdatedTime))
+                .ToList();
+
+            briefChatTargetInformationList.AddRange(usersInformationList);
+
+            SyncChatsResponseData syncChatsResponseData = new(chatsList, briefChatTargetInformationList, currentUpdatedTime);
+            ResponseT<SyncChatsResponseData> getSyncDataSuccessed = new(0, "成功获取待同步的数据", syncChatsResponseData);
+            return Ok(getSyncDataSuccessed);
+        }
+    }
+}

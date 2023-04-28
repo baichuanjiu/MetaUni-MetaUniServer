@@ -23,7 +23,11 @@
   </ItemGroup>
 
   <ItemGroup>
-    <Folder Include="Controllers\" />
+    <Folder Include="Controllers\CommonMessage\" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\User.API\User.API.csproj" />
   </ItemGroup>
 
 </Project>
