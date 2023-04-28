@@ -12,9 +12,9 @@ namespace User.API.DataContext.User
 
         public DbSet<UserAccount> UserAccounts { get; set; }
         public DbSet<UserProfile> UserProfiles { get; set; }
-        public DbSet<UserSyncTable> UserSynchronizationTables { get; set; }
+        public DbSet<UserSyncTable> UserSyncTables { get; set; }
         public DbSet<FriendsGroup> FriendsGroups { get; set; }
-        public DbSet<FriendShip> FriendShips { get; set; }
+        public DbSet<Friendship> Friendships { get; set; }
 
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
@@ -25,7 +25,7 @@ namespace User.API.DataContext.User
             modelBuilder.Entity<UserProfile>();
             modelBuilder.Entity<UserSyncTable>();
             modelBuilder.Entity<FriendsGroup>();
-            modelBuilder.Entity<FriendShip>();
+            modelBuilder.Entity<Friendship>();
         }
 
     }

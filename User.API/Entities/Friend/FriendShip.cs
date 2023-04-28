@@ -4,9 +4,9 @@ using System.ComponentModel.DataAnnotations.Schema;
 
 namespace User.API.Entities.Friend
 {
-    [Table("FriendShip")]
+    [Table("Friendship")]
     [Index(nameof(UUID))]
-    public class FriendShip
+    public class Friendship
     {
         [Key]
         public int Id { get; set; } //主键
@@ -19,6 +19,5 @@ namespace User.API.Entities.Friend
         public bool IsFocus { get; set; } = false; //主体是否将客体设置为特别关心
         public bool IsDeleted { get; set; } = false; //这条好友关系是否已被用户删除
         public DateTime UpdatedTime { get; set; } //最后更新时间，用于实现增量更新
-
     }
 }
