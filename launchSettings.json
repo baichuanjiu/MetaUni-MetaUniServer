@@ -5,7 +5,8 @@
       "commandVersion": "1.0",
       "serviceActions": {
         "user.api": "StartDebugging",
-        "websocket.api": "StartDebugging"
+        "websocket.api": "StartDebugging",
+        "message.api": "StartDebugging"
       }
     }
   }

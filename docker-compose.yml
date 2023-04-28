@@ -71,3 +71,45 @@ services:
       Consul__IP: host.docker.internal
       Consul__Port: 46678
 
+  message.api:
+    image: ${DOCKER_REGISTRY-}messageapi
+    build:
+      context: .
+      dockerfile: Message.API/Dockerfile
+    ports:
+      - 46684:80
+      - 46685:443
+    environment:
+      Consul__ID: Message.API.46684
+      Consul__Name: MetaUni.Message.API
+      Consul__IP: host.docker.internal
+      Consul__Port: 46684
+
+  message.api2:
+    image: ${DOCKER_REGISTRY-}messageapi
+    build:
+      context: .
+      dockerfile: Message.API/Dockerfile
+    ports:
+      - 46686:80
+      - 46687:443
+    environment:
+      Consul__ID: Message.API.46686
+      Consul__Name: MetaUni.Message.API
+      Consul__IP: host.docker.internal
+      Consul__Port: 46686
+
+  message.api3:
+    image: ${DOCKER_REGISTRY-}messageapi
+    build:
+      context: .
+      dockerfile: Message.API/Dockerfile
+    ports:
+      - 46688:80
+      - 46689:443
+    environment:
+      Consul__ID: Message.API.46688
+      Consul__Name: MetaUni.Message.API
+      Consul__IP: host.docker.internal
+      Consul__Port: 46688
+
