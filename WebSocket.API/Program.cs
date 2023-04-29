@@ -3,6 +3,7 @@ using Consul.AspNetCore;
 using Serilog;
 using WebSocket.API;
 using WebSocket.API.Filters;
+using WebSocket.API.RabbitMQ;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -43,6 +44,9 @@ builder.Services.AddStackExchangeRedisCache(options =>
 
 //配置WebSocketsManager（将所有建立连接的WebSockets当作Static资源进行处理）
 builder.Services.AddSingleton<WebSocketsManager>();
+
+//配置消息队列消费者
+builder.Services.AddScoped<MsgConsumer>();
 
 //配置Filters
 builder.Services.AddScoped<JWTAuthFilterService>();

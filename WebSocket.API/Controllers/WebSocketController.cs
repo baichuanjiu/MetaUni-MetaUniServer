@@ -2,6 +2,7 @@
 using Microsoft.Extensions.Caching.Distributed;
 using System.Net.WebSockets;
 using WebSocket.API.Filters;
+using WebSocket.API.RabbitMQ;
 
 namespace WebSocket.API.Controllers
 {
@@ -14,13 +15,15 @@ namespace WebSocket.API.Controllers
         private readonly WebSocketsManager _webSocketsManager;
         private readonly IDistributedCache _distributedCache;
         private readonly IConfiguration _configuration;
+        private readonly MsgConsumer _msgConsumer;
         private readonly ILogger<WebSocketController> _logger;
 
-        public WebSocketController(WebSocketsManager webSocketsManager, IDistributedCache distributedCache, IConfiguration configuration, ILogger<WebSocketController> logger)
+        public WebSocketController(WebSocketsManager webSocketsManager, IDistributedCache distributedCache, IConfiguration configuration, MsgConsumer msgConsumer, ILogger<WebSocketController> logger)
         {
             _webSocketsManager = webSocketsManager;
             _distributedCache = distributedCache;
             _configuration = configuration;
+            _msgConsumer = msgConsumer;
             _logger = logger;
         }
 
