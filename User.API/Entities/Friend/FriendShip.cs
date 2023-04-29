@@ -11,7 +11,7 @@ namespace User.API.Entities.Friend
         [Key]
         public int Id { get; set; } //主键
         public int UUID { get; set; } //逻辑外键，与UserAccount表关联，标识这条FriendShip属于谁，主体的UUID
-        public int FriendsGroupId { get; set; } //逻辑外键，与FriendsGroup表关联，标识这条FriendShip被主体放在哪个好友分组内
+        public int FriendsGroupId { get; set; } //逻辑外键，与FriendsGroup表关联，标识这条Friendship被主体放在哪个好友分组内
         public int FriendId { get; set; } //标识谁是主体的Friend，客体的UUID
         public DateTime ShipCreatedTime { get; set; } //成为好友的时间
         [MaxLength(15)]

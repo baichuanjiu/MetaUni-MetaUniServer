@@ -5,7 +5,7 @@ using System.ComponentModel.DataAnnotations.Schema;
 namespace User.API.Entities.User
 {
     //用户同步表，用于记录用户对于某些需要同步的数据的最后更新时间，以及最后收到的普通消息与系统消息的Sequence（群组消息的Sequence由GroupShip进行维护）
-    [Table("UserSynchronizationTable")]
+    [Table("UserSyncTable")]
     [Index(nameof(UUID))]
     public class UserSyncTable
     {
