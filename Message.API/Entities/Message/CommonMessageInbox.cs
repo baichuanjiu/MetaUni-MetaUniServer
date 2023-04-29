@@ -8,6 +8,17 @@ namespace Message.API.Entities.Message
     [Index(nameof(UUID))]
     public class CommonMessageInbox
     {
+        public CommonMessageInbox(int id, int UUID, int messageId, int chatId, bool isRead, bool isDeleted, int sequence)
+        {
+            Id = id;
+            this.UUID = UUID;
+            MessageId = messageId;
+            ChatId = chatId;
+            IsRead = isRead;
+            IsDeleted = isDeleted;
+            Sequence = sequence;
+        }
+
         [Key]
         public int Id { get; set; } //主键
         public int UUID { get; set; } //消息所有者

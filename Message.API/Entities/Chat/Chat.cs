@@ -8,6 +8,21 @@ namespace Message.API.Entities.Chat
     [Index(nameof(UUID))]
     public class Chat
     {
+        public Chat(int id, int UUID, int targetId, bool isWithOtherUser, bool isWithGroup, bool isWithSystem, bool isStickyOnTop, bool isDeleted, int numberOfUnreadMessages, int? lastMessageId, DateTime updatedTime)
+        {
+            Id = id;
+            this.UUID = UUID;
+            TargetId = targetId;
+            IsWithOtherUser = isWithOtherUser;
+            IsWithGroup = isWithGroup;
+            IsWithSystem = isWithSystem;
+            IsStickyOnTop = isStickyOnTop;
+            IsDeleted = isDeleted;
+            NumberOfUnreadMessages = numberOfUnreadMessages;
+            LastMessageId = lastMessageId;
+            UpdatedTime = updatedTime;
+        }
+
         [Key]
         public int Id { get; set; } //主键
         public int UUID { get; set; } //标识这条Chat记录属于谁，主体的UUID

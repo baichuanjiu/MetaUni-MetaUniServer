@@ -2,6 +2,7 @@ using Consul;
 using Consul.AspNetCore;
 using Message.API.DataContext.Message;
 using Message.API.Filters;
+using Message.API.RabbitMQ;
 using Microsoft.EntityFrameworkCore;
 using Serilog;
 using User.API.DataContext.User;
@@ -51,6 +52,9 @@ builder.Services.AddStackExchangeRedisCache(options =>
 {
     options.Configuration = builder.Configuration.GetConnectionString("Redis");
 });
+
+//配置消息队列生产者（消息发布者）
+builder.Services.AddScoped<IMessagePublisher, MessagePublisher>();
 
 //配置Filters
 builder.Services.AddScoped<JWTAuthFilterService>();

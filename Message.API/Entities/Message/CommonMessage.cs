@@ -6,6 +6,27 @@ namespace Message.API.Entities.Message
     [Table("CommonMessage")]
     public class CommonMessage
     {
+        public CommonMessage(int id, int senderId, int receiverId, DateTime createdTime, bool isCustom, bool isRecalled, bool isReply, bool isImageMessage, bool isVoiceMessage, string? customType, string? minimumSupportVersion, string? textOnError, string? customMessageContent, int? messageReplied, string? messageText, string? messageImage, string? messageVoice)
+        {
+            Id = id;
+            SenderId = senderId;
+            ReceiverId = receiverId;
+            CreatedTime = createdTime;
+            IsCustom = isCustom;
+            IsRecalled = isRecalled;
+            IsReply = isReply;
+            IsImageMessage = isImageMessage;
+            IsVoiceMessage = isVoiceMessage;
+            CustomType = customType;
+            MinimumSupportVersion = minimumSupportVersion;
+            TextOnError = textOnError;
+            CustomMessageContent = customMessageContent;
+            MessageReplied = messageReplied;
+            MessageText = messageText;
+            MessageImage = messageImage;
+            MessageVoice = messageVoice;
+        }
+
         [Key]
         public int Id { get; set; } //消息ID，一条消息记录的唯一标识
         public int SenderId { get; set; } //消息发送者的UUID
