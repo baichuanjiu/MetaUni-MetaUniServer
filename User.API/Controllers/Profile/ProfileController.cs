@@ -91,6 +91,7 @@ namespace User.API.Controllers.Profile
             {
                 UserProfile? userprofile = await _userContext.UserProfiles.FirstOrDefaultAsync(profile => profile.UUID == UUID);
                 userprofile!.Avatar = _configuration["MinIO:UserAvatarURLPrefix"]! + fileName;
+                userprofile.UpdatedTime = DateTime.Now;
                 await _userContext.SaveChangesAsync();
                 ResponseT<string> uploadAvatarSuccessed = new(0, "头像上传成功", userprofile.Avatar);
                 return Ok(uploadAvatarSuccessed);
