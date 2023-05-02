@@ -11,12 +11,14 @@ namespace Message.API.DataContext.Message
         }
 
         public DbSet<Chat> Chats { get; set; }
+        public DbSet<CommonChatStatus> CommonChatStatuses { get; set; }
         public DbSet<CommonMessage> CommonMessages { get; set; }
         public DbSet<CommonMessageInbox> CommonMessageInboxes { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
             modelBuilder.Entity<Chat>();
+            modelBuilder.Entity<CommonChatStatus>();
             modelBuilder.Entity<CommonMessage>();
             modelBuilder.Entity<CommonMessageInbox>();
         }

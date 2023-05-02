@@ -17,6 +17,7 @@ namespace User.API.Entities.User
         public DateTime UpdatedTimeForFriendsGroups { get; set; } //用户的好友分组的最后一次更新时间
         public DateTime UpdatedTimeForFriendships { get; set; } //用户的好友关系的最后一次更新时间
         public DateTime UpdatedTimeForChats { get; set; } //用户的会话列表的最后一次更新（新建（包含从删除状态中恢复）、置顶、删除、消息更新）时间
-        public DateTime UpdatedTimeForFriendsBriefInformation { get; set; } //用户最后一次对好友的信息（网名、头像）进行同步的时间
+        public DateTime LastSyncTimeForCommonChatStatuses { get; set; } //用户最后一次对CommonChatStatu进行同步的时间
+        public DateTime LastSyncTimeForFriendsBriefInformation { get; set; } //用户最后一次对好友的信息（网名、头像）进行同步的时间
     }
 }

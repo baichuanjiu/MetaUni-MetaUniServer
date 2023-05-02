@@ -80,6 +80,7 @@ namespace User.API.Controllers.Profile
         public async Task<IActionResult> UploadAvatar([FromForm] IFormFile avatar, [FromHeader] string JWT, [FromHeader] int UUID)
         {
             string extension = Path.GetExtension(avatar.FileName);
+            //记得验证图片格式，防止上传恶意文件
 
             Stream stream = avatar.OpenReadStream();
 

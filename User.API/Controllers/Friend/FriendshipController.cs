@@ -91,10 +91,10 @@ namespace User.API.Controllers.Friend
         }
 
         [HttpGet("friendsInformation/sync")]
-        public async Task<IActionResult> SyncFriendsInformation([FromQuery] DateTime updatedTime, [FromHeader] string JWT, [FromHeader] int UUID)
+        public async Task<IActionResult> SyncFriendsInformation([FromQuery] DateTime lastSyncTime, [FromHeader] string JWT, [FromHeader] int UUID)
         {
             //实际查询时间（冗余10分钟）
-            DateTime queryTime = updatedTime.AddMinutes(-10);
+            DateTime queryTime = lastSyncTime.AddMinutes(-10);
             //查找从queryTime到currentTime内更新过的数据
             DateTime currentTime = DateTime.Now;
 
@@ -114,7 +114,7 @@ namespace User.API.Controllers.Friend
 
 
             UserSyncTable? userSyncTable = await _userContext.UserSyncTables.FirstOrDefaultAsync(table => table.UUID == UUID);
-            userSyncTable!.UpdatedTimeForFriendsBriefInformation = currentTime;
+            userSyncTable!.LastSyncTimeForFriendsBriefInformation = currentTime;
             await _userContext.SaveChangesAsync();
 
             SyncFriendsInformationResponseData syncFriendsInformationResponseData = new(dataList, currentTime);

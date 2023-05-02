@@ -1,10 +1,13 @@
 ﻿using Message.API.DataContext.Message;
+using Message.API.Entities.Chat;
 using Message.API.Filters;
 using Message.API.ReusableClass;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using User.API.Controllers.Friend;
 using User.API.Controllers.Profile;
 using User.API.DataContext.User;
+using User.API.Entities.User;
 
 namespace Message.API.Controllers.Chat
 {
@@ -38,6 +41,18 @@ namespace Message.API.Controllers.Chat
         public int Id { get; set; }
         public string Avatar { get; set; }
         public string Name { get; set; }
+        public DateTime UpdatedTime { get; set; }
+    }
+
+    public class SyncCommonChatStatusesResponseData
+    {
+        public SyncCommonChatStatusesResponseData(List<CommonChatStatus> dataList, DateTime updatedTime)
+        {
+            DataList = dataList;
+            UpdatedTime = updatedTime;
+        }
+
+        public List<CommonChatStatus> DataList { get; set; }
         public DateTime UpdatedTime { get; set; }
     }
 
@@ -92,5 +107,26 @@ namespace Message.API.Controllers.Chat
             ResponseT<SyncChatsResponseData> getSyncDataSuccessed = new(0, "成功获取待同步的数据", syncChatsResponseData);
             return Ok(getSyncDataSuccessed);
         }
+
+        [HttpGet("commonChatStatus/sync")]
+        public async Task<IActionResult> SyncCommonChatStatus([FromQuery] DateTime lastSyncTime, [FromHeader] string JWT, [FromHeader] int UUID)
+        {
+            //实际查询时间（冗余10分钟）
+            DateTime queryTime = lastSyncTime.AddMinutes(-10);
+            //查找从queryTime到currentTime内更新过的数据
+            DateTime currentTime = DateTime.Now;
+
+            //查找数据库
+            List<CommonChatStatus> dataList = await _messageContext.CommonChatStatuses.Where(status => status.UUID == UUID && status.UpdatedTime > queryTime).ToListAsync();
+
+            UserSyncTable? userSyncTable = await _userContext.UserSyncTables.FirstOrDefaultAsync(table => table.UUID == UUID);
+            userSyncTable!.LastSyncTimeForCommonChatStatuses = currentTime;
+            await _userContext.SaveChangesAsync();
+
+            SyncCommonChatStatusesResponseData syncCommonChatStatusesResponseData = new(dataList, currentTime);
+            ResponseT<SyncCommonChatStatusesResponseData> getSyncDataSuccessed = new(0, "成功获取待同步的数据", syncCommonChatStatusesResponseData);
+            return Ok(getSyncDataSuccessed);
+        }
+
     }
 }

@@ -9,7 +9,7 @@ namespace WebSocket.API.RabbitMQ
 {
     public class CommonMessageDataForClient
     {
-        public CommonMessageDataForClient(int id, int chatId, int senderId, int receiverId, DateTime createdTime, bool isCustom, bool isRecalled, bool isDeleted, bool isReply, bool isImageMessage, bool isVoiceMessage, bool isRead, string? customType, string? minimumSupportVersion, string? textOnError, string? customMessageContent, int? messageReplied, string? messageText, string? messageImage, string? messageVoice, int sequence)
+        public CommonMessageDataForClient(int id, int chatId, int senderId, int receiverId, DateTime createdTime, bool isCustom, bool isRecalled, bool isDeleted, bool isReply, bool isImageMessage, bool isVoiceMessage, string? customType, string? minimumSupportVersion, string? textOnError, string? customMessageContent, int? messageReplied, string? messageText, string? messageImage, string? messageVoice, int sequence)
         {
             Id = id;
             ChatId = chatId;
@@ -22,7 +22,6 @@ namespace WebSocket.API.RabbitMQ
             IsReply = isReply;
             IsImageMessage = isImageMessage;
             IsVoiceMessage = isVoiceMessage;
-            IsRead = isRead;
             CustomType = customType;
             MinimumSupportVersion = minimumSupportVersion;
             TextOnError = textOnError;
@@ -45,7 +44,6 @@ namespace WebSocket.API.RabbitMQ
         public bool IsReply { get; set; }
         public bool IsImageMessage { get; set; }
         public bool IsVoiceMessage { get; set; }
-        public bool IsRead { get; set; }
         public string? CustomType { get; set; }
         public string? MinimumSupportVersion { get; set; }
         public string? TextOnError { get; set; }
@@ -83,7 +81,7 @@ namespace WebSocket.API.RabbitMQ
             channel = connection.CreateModel();
             channel.ExchangeDeclare("msg", type: ExchangeType.Direct);
             string queueName = "msg" + _configuration["Consul:Port"]!;
-            channel.QueueDeclare(queueName);
+            channel.QueueDeclare(queueName, exclusive: false);
             channel.QueueBind(queue: queueName, exchange: "msg", routingKey: _configuration["Consul:Port"]!);
             var consumer = new EventingBasicConsumer(channel);
             consumer.Received += async (model, eventArgs) =>

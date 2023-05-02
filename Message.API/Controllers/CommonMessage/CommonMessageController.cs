@@ -1,4 +1,5 @@
 ﻿using Message.API.DataContext.Message;
+using Message.API.Entities.Chat;
 using Message.API.Entities.Message;
 using Message.API.Filters;
 using Message.API.RabbitMQ;
@@ -24,7 +25,7 @@ namespace Message.API.Controllers.CommonMessage
     }
     public class CommonMessageDataForClient
     {
-        public CommonMessageDataForClient(int id, int chatId, int senderId, int receiverId, DateTime createdTime, bool isCustom, bool isRecalled, bool isDeleted, bool isReply, bool isImageMessage, bool isVoiceMessage, bool isRead, string? customType, string? minimumSupportVersion, string? textOnError, string? customMessageContent, int? messageReplied, string? messageText, string? messageImage, string? messageVoice, int sequence)
+        public CommonMessageDataForClient(int id, int chatId, int senderId, int receiverId, DateTime createdTime, bool isCustom, bool isRecalled, bool isDeleted, bool isReply, bool isImageMessage, bool isVoiceMessage, string? customType, string? minimumSupportVersion, string? textOnError, string? customMessageContent, int? messageReplied, string? messageText, string? messageImage, string? messageVoice, int sequence)
         {
             Id = id;
             ChatId = chatId;
@@ -37,7 +38,6 @@ namespace Message.API.Controllers.CommonMessage
             IsReply = isReply;
             IsImageMessage = isImageMessage;
             IsVoiceMessage = isVoiceMessage;
-            IsRead = isRead;
             CustomType = customType;
             MinimumSupportVersion = minimumSupportVersion;
             TextOnError = textOnError;
@@ -60,7 +60,6 @@ namespace Message.API.Controllers.CommonMessage
         public bool IsReply { get; set; }
         public bool IsImageMessage { get; set; }
         public bool IsVoiceMessage { get; set; }
-        public bool IsRead { get; set; }
         public string? CustomType { get; set; }
         public string? MinimumSupportVersion { get; set; }
         public string? TextOnError { get; set; }
@@ -127,6 +126,9 @@ namespace Message.API.Controllers.CommonMessage
                     _messageContext.SaveChanges();
 
                     senderChatId = newSenderChat.Id;
+
+                    CommonChatStatus newSenderChatStatus = new(id: 0,UUID: newSenderChat.UUID, chatId: senderChatId, lastMessageSendByMe: message.Id, isRead: false, readTime: null, updatedTime: message.CreatedTime);
+                    _messageContext.CommonChatStatuses.Add(newSenderChatStatus);
                 }
                 else
                 {
@@ -135,6 +137,12 @@ namespace Message.API.Controllers.CommonMessage
                     senderChat.UpdatedTime = message.CreatedTime;
 
                     senderChatId = senderChat.Id;
+
+                    CommonChatStatus? senderChatStatus = await _messageContext.CommonChatStatuses.FirstOrDefaultAsync(status => status.ChatId == senderChat.Id);
+                    senderChatStatus!.LastMessageSendByMe = message.Id;
+                    senderChatStatus.IsRead = false;
+                    senderChatStatus.ReadTime = null;
+                    senderChatStatus.UpdatedTime = message.CreatedTime;
                 }
                 if (receiverChat == null)
                 {
@@ -143,6 +151,9 @@ namespace Message.API.Controllers.CommonMessage
                     _messageContext.SaveChanges();
 
                     receiverChatId = newReceiverChat.Id;
+
+                    CommonChatStatus newReceiverChatStatus = new(id: 0,UUID: newReceiverChat.UUID, chatId: receiverChatId, lastMessageSendByMe: null, isRead: null, readTime: null, updatedTime: message.CreatedTime);
+                    _messageContext.CommonChatStatuses.Add(newReceiverChatStatus);
                 }
                 else
                 {
@@ -157,11 +168,11 @@ namespace Message.API.Controllers.CommonMessage
 
                 var currentSenderSequence = await _userContext.UserSyncTables.FirstOrDefaultAsync(table => table.UUID == UUID);
                 int newSenderSequence = currentSenderSequence!.SequenceForCommonMessages + 1;
-                CommonMessageInbox senderInbox = new(id: 0, UUID: UUID, messageId: message.Id, chatId: senderChatId, isRead: true, isDeleted: false, sequence: newSenderSequence);
+                CommonMessageInbox senderInbox = new(id: 0, UUID: UUID, messageId: message.Id, chatId: senderChatId, isDeleted: false, sequence: newSenderSequence);
 
                 var currentReceiverSequence = await _userContext.UserSyncTables.FirstOrDefaultAsync(table => table.UUID == textMessageData.ReceiverId);
                 int newReceiverSequence = currentReceiverSequence!.SequenceForCommonMessages + 1;
-                CommonMessageInbox receiverInbox = new(id: 0, UUID: textMessageData.ReceiverId, messageId: message.Id, chatId: receiverChatId, isRead: false, isDeleted: false, sequence: newReceiverSequence);
+                CommonMessageInbox receiverInbox = new(id: 0, UUID: textMessageData.ReceiverId, messageId: message.Id, chatId: receiverChatId, isDeleted: false, sequence: newReceiverSequence);
 
                 _messageContext.CommonMessageInboxes.Add(senderInbox);
                 _messageContext.CommonMessageInboxes.Add(receiverInbox);
@@ -176,7 +187,7 @@ namespace Message.API.Controllers.CommonMessage
                 userContextTransaction.Commit();
                 messageContextTransaction.Commit();
 
-                CommonMessageDataForClient dataForReceiver = new(message.Id, receiverInbox.ChatId, message.SenderId, message.ReceiverId, message.CreatedTime, message.IsCustom, message.IsRecalled, false, message.IsReply, message.IsImageMessage, message.IsVoiceMessage, false, message.CustomType, message.MinimumSupportVersion, message.TextOnError, message.CustomMessageContent, message.MessageReplied, message.MessageText, message.MessageImage, message.MessageVoice, currentReceiverSequence.SequenceForCommonMessages);
+                CommonMessageDataForClient dataForReceiver = new(message.Id, receiverInbox.ChatId, message.SenderId, message.ReceiverId, message.CreatedTime, message.IsCustom, message.IsRecalled, false, message.IsReply, message.IsImageMessage, message.IsVoiceMessage, message.CustomType, message.MinimumSupportVersion, message.TextOnError, message.CustomMessageContent, message.MessageReplied, message.MessageText, message.MessageImage, message.MessageVoice, currentReceiverSequence.SequenceForCommonMessages);
 
                 //操作完数据库后，使用消息队列发送消息
                 //通过Redis查找目标用户上一次在哪一台服务器连接了WebSocket，尝试由那台服务器发送消息
@@ -191,7 +202,7 @@ namespace Message.API.Controllers.CommonMessage
                 }
 
                 //返回相关信息，供发送者的客户端更新数据库
-                CommonMessageDataForClient dataForSender = new(message.Id, senderInbox.ChatId, message.SenderId, message.ReceiverId, message.CreatedTime, message.IsCustom, message.IsRecalled, false, message.IsReply, message.IsImageMessage, message.IsVoiceMessage, true, message.CustomType, message.MinimumSupportVersion, message.TextOnError, message.CustomMessageContent, message.MessageReplied, message.MessageText, message.MessageImage, message.MessageVoice, currentSenderSequence.SequenceForCommonMessages);
+                CommonMessageDataForClient dataForSender = new(message.Id, senderInbox.ChatId, message.SenderId, message.ReceiverId, message.CreatedTime, message.IsCustom, message.IsRecalled, false, message.IsReply, message.IsImageMessage, message.IsVoiceMessage, message.CustomType, message.MinimumSupportVersion, message.TextOnError, message.CustomMessageContent, message.MessageReplied, message.MessageText, message.MessageImage, message.MessageVoice, currentSenderSequence.SequenceForCommonMessages);
                 ResponseT<CommonMessageDataForClient> sendMessageSuccessed = new(0, "发送成功", dataForSender);
                 return Ok(sendMessageSuccessed);
             }
