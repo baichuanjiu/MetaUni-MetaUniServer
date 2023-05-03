@@ -1,7 +1,5 @@
-﻿using Azure;
-using Microsoft.AspNetCore.Mvc;
+﻿using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Caching.Distributed;
 using User.API.Controllers.Profile;
 using User.API.DataContext.User;
 using User.API.Entities.Friend;
@@ -99,19 +97,15 @@ namespace User.API.Controllers.Friend
             DateTime currentTime = DateTime.Now;
 
             //查找数据库
-            List<int> friendIdList = await _userContext.Friendships
+            List<BriefUserInformation> dataList = await _userContext.Friendships
                 .Select(ship => new { ship.UUID, ship.FriendId })
                 .Where(ship => ship.UUID == UUID)
                 .Select(ship => ship.FriendId)
-                .ToListAsync();
-
-            List<BriefUserInformation> dataList = friendIdList
                 .Join(_userContext.UserProfiles
                 .Select(profile => new { profile.UUID, profile.Avatar, profile.Nickname, profile.UpdatedTime })
                 .Where(profile => profile.UpdatedTime > queryTime),
                 friendId => friendId, profile => profile.UUID, (friendId, profile) => new BriefUserInformation(profile.UUID, profile.Avatar, profile.Nickname, profile.UpdatedTime))
-                .ToList();
-
+                .ToListAsync();
 
             UserSyncTable? userSyncTable = await _userContext.UserSyncTables.FirstOrDefaultAsync(table => table.UUID == UUID);
             userSyncTable!.LastSyncTimeForFriendsBriefInformation = currentTime;
