@@ -4,7 +4,6 @@ using Message.API.Filters;
 using Message.API.ReusableClass;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
-using User.API.Controllers.Friend;
 using User.API.Controllers.Profile;
 using User.API.DataContext.User;
 using User.API.Entities.User;
