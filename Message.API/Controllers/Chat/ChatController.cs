@@ -42,16 +42,33 @@ namespace Message.API.Controllers.Chat
         public string Name { get; set; }
         public DateTime UpdatedTime { get; set; }
     }
+    public class CommonChatStatusForClient
+    {
+        public CommonChatStatusForClient(int chatId, int? lastMessageSendByMe, bool? isRead, DateTime? readTime, DateTime updatedTime)
+        {
+            ChatId = chatId;
+            LastMessageSendByMe = lastMessageSendByMe;
+            IsRead = isRead;
+            ReadTime = readTime;
+            UpdatedTime = updatedTime;
+        }
+
+        public int ChatId { get; set; }
+        public int? LastMessageSendByMe { get; set; }
+        public bool? IsRead { get; set; }
+        public DateTime? ReadTime { get; set; }
+        public DateTime UpdatedTime { get; set; }
+    }
 
     public class SyncCommonChatStatusesResponseData
     {
-        public SyncCommonChatStatusesResponseData(List<CommonChatStatus> dataList, DateTime updatedTime)
+        public SyncCommonChatStatusesResponseData(List<CommonChatStatusForClient> dataList, DateTime updatedTime)
         {
             DataList = dataList;
             UpdatedTime = updatedTime;
         }
 
-        public List<CommonChatStatus> DataList { get; set; }
+        public List<CommonChatStatusForClient> DataList { get; set; }
         public DateTime UpdatedTime { get; set; }
     }
 
@@ -116,7 +133,7 @@ namespace Message.API.Controllers.Chat
             DateTime currentTime = DateTime.Now;
 
             //查找数据库
-            List<CommonChatStatus> dataList = await _messageContext.CommonChatStatuses.Where(status => status.UUID == UUID && status.UpdatedTime > queryTime).ToListAsync();
+            List<CommonChatStatusForClient> dataList = await _messageContext.CommonChatStatuses.Select(status => new { status.UUID, status.ChatId, status.LastMessageSendByMe, status.IsRead, status.ReadTime, status.UpdatedTime }).Where(status => status.UUID == UUID && status.UpdatedTime > queryTime).Select(status => new CommonChatStatusForClient(status.ChatId, status.LastMessageSendByMe, status.IsRead, status.ReadTime, status.UpdatedTime)).ToListAsync();
 
             UserSyncTable? userSyncTable = await _userContext.UserSyncTables.FirstOrDefaultAsync(table => table.UUID == UUID);
             userSyncTable!.LastSyncTimeForCommonChatStatuses = currentTime;
