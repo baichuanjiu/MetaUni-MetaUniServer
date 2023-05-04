@@ -127,8 +127,17 @@ namespace Message.API.Controllers.CommonMessage
 
                     senderChatId = newSenderChat.Id;
 
-                    CommonChatStatus newSenderChatStatus = new(id: 0,UUID: newSenderChat.UUID, chatId: senderChatId, lastMessageSendByMe: message.Id, isRead: false, readTime: null, updatedTime: message.CreatedTime);
+                    Entities.Chat.Chat newReceiverChat = new(id: 0, UUID: textMessageData.ReceiverId, targetId: UUID, isWithOtherUser: true, isWithGroup: false, isWithSystem: false, isStickyOnTop: false, isDeleted: false, numberOfUnreadMessages: 1, lastMessageId: message.Id, updatedTime: message.CreatedTime);
+                    _messageContext.Chats.Add(newReceiverChat);
+                    _messageContext.SaveChanges();
+
+                    receiverChatId = newReceiverChat.Id;
+
+                    CommonChatStatus newSenderChatStatus = new(id: 0, UUID: newSenderChat.UUID, chatId: senderChatId, targetUserChatId: receiverChatId, lastMessageSendByMe: message.Id, isRead: false, readTime: null, updatedTime: message.CreatedTime);
                     _messageContext.CommonChatStatuses.Add(newSenderChatStatus);
+
+                    CommonChatStatus newReceiverChatStatus = new(id: 0, UUID: newReceiverChat.UUID, chatId: receiverChatId, targetUserChatId: senderChatId, lastMessageSendByMe: null, isRead: null, readTime: null, updatedTime: message.CreatedTime);
+                    _messageContext.CommonChatStatuses.Add(newReceiverChatStatus);
                 }
                 else
                 {
@@ -143,27 +152,15 @@ namespace Message.API.Controllers.CommonMessage
                     senderChatStatus.IsRead = false;
                     senderChatStatus.ReadTime = null;
                     senderChatStatus.UpdatedTime = message.CreatedTime;
-                }
-                if (receiverChat == null)
-                {
-                    Entities.Chat.Chat newReceiverChat = new(id: 0, UUID: textMessageData.ReceiverId, targetId: UUID, isWithOtherUser: true, isWithGroup: false, isWithSystem: false, isStickyOnTop: false, isDeleted: false, numberOfUnreadMessages: 1, lastMessageId: message.Id, updatedTime: message.CreatedTime);
-                    _messageContext.Chats.Add(newReceiverChat);
-                    _messageContext.SaveChanges();
 
-                    receiverChatId = newReceiverChat.Id;
-
-                    CommonChatStatus newReceiverChatStatus = new(id: 0,UUID: newReceiverChat.UUID, chatId: receiverChatId, lastMessageSendByMe: null, isRead: null, readTime: null, updatedTime: message.CreatedTime);
-                    _messageContext.CommonChatStatuses.Add(newReceiverChatStatus);
-                }
-                else
-                {
-                    receiverChat.IsDeleted = false;
+                    receiverChat!.IsDeleted = false;
                     receiverChat.NumberOfUnreadMessages++;
                     receiverChat.LastMessageId = message.Id;
                     receiverChat.UpdatedTime = message.CreatedTime;
 
                     receiverChatId = receiverChat.Id;
                 }
+
                 _messageContext.SaveChanges();
 
                 var currentSenderSequence = await _userContext.UserSyncTables.FirstOrDefaultAsync(table => table.UUID == UUID);
@@ -192,19 +189,19 @@ namespace Message.API.Controllers.CommonMessage
                 //操作完数据库后，使用消息队列发送消息
                 //通过Redis查找目标用户上一次在哪一台服务器连接了WebSocket，尝试由那台服务器发送消息
                 string? webSocketPort = await _distributedCache.GetStringAsync(textMessageData.ReceiverId + "WebSocket");
-                if (webSocketPort != null) 
-                { 
-                    _messagePublisher.SendMessage(new { type = "NewCommonMessage", data = dataForReceiver }, "msg", webSocketPort); 
+                if (webSocketPort != null)
+                {
+                    _messagePublisher.SendMessage(new { type = "NewCommonMessage", data = dataForReceiver }, "msg", webSocketPort);
                 }
-                else 
+                else
                 {
                     //表明无法通过WebSocket发送此消息，需要将该消息视作发送失败，进入MongoDB中
                 }
 
                 //返回相关信息，供发送者的客户端更新数据库
                 CommonMessageDataForClient dataForSender = new(message.Id, senderInbox.ChatId, message.SenderId, message.ReceiverId, message.CreatedTime, message.IsCustom, message.IsRecalled, false, message.IsReply, message.IsImageMessage, message.IsVoiceMessage, message.CustomType, message.MinimumSupportVersion, message.TextOnError, message.CustomMessageContent, message.MessageReplied, message.MessageText, message.MessageImage, message.MessageVoice, currentSenderSequence.SequenceForCommonMessages);
-                ResponseT<CommonMessageDataForClient> sendMessageSuccessed = new(0, "发送成功", dataForSender);
-                return Ok(sendMessageSuccessed);
+                ResponseT<CommonMessageDataForClient> sendMessageSucceed = new(0, "发送成功", dataForSender);
+                return Ok(sendMessageSucceed);
             }
             catch (Exception ex)
             {

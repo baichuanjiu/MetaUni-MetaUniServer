@@ -142,9 +142,9 @@ namespace User.API.Controllers.Login
                         //将JWT存入Redis
                         await _distributedCache.SetStringAsync(UUID.ToString(), JWT, options);
 
-                        ResponseT<LoginResponseData> loginSuccessed = new(0, "登录成功", new LoginResponseData(JWT, UUID, targetProfile.Avatar, targetProfile.Nickname, targetProfile.UpdatedTime));
+                        ResponseT<LoginResponseData> loginSucceed = new(0, "登录成功", new LoginResponseData(JWT, UUID, targetProfile.Avatar, targetProfile.Nickname, targetProfile.UpdatedTime));
 
-                        return Ok(loginSuccessed);
+                        return Ok(loginSucceed);
                     }
                 }
             }
@@ -224,8 +224,8 @@ namespace User.API.Controllers.Login
                     //将RSA私钥存入Redis
                     await _distributedCache.SetStringAsync(checkAccount + "RSAPrivateKey", privateKey, options);
 
-                    ResponseT<CheckAccountResponseData> checkSuccessed = new(0, "该账号有效", new CheckAccountResponseData(checkAccount, targetProfile.Avatar, privateNickname, publicKey));
-                    return Ok(checkSuccessed);
+                    ResponseT<CheckAccountResponseData> checkSucceed = new(0, "该账号有效", new CheckAccountResponseData(checkAccount, targetProfile.Avatar, privateNickname, publicKey));
+                    return Ok(checkSucceed);
                 }
             }
             ResponseT<string> checkFailed = new(1, "该账号不存在");

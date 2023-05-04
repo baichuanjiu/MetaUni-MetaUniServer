@@ -84,8 +84,8 @@ namespace User.API.Controllers.Friend
                 .ToList();
 
             SyncFriendshipsResponseData syncFriendshipsResponseData = new(friendshipsList, briefUserInformationList, currentUpdatedTime);
-            ResponseT<SyncFriendshipsResponseData> getSyncDataSuccessed = new(0, "成功获取待同步的数据", syncFriendshipsResponseData);
-            return Ok(getSyncDataSuccessed);
+            ResponseT<SyncFriendshipsResponseData> getSyncDataSucceed = new(0, "成功获取待同步的数据", syncFriendshipsResponseData);
+            return Ok(getSyncDataSucceed);
         }
 
         [HttpGet("friendsInformation/sync")]
@@ -112,8 +112,8 @@ namespace User.API.Controllers.Friend
             await _userContext.SaveChangesAsync();
 
             SyncFriendsInformationResponseData syncFriendsInformationResponseData = new(dataList, currentTime);
-            ResponseT<SyncFriendsInformationResponseData> getSyncDataSuccessed = new(0, "成功获取待同步的数据", syncFriendsInformationResponseData);
-            return Ok(getSyncDataSuccessed);
+            ResponseT<SyncFriendsInformationResponseData> getSyncDataSucceed = new(0, "成功获取待同步的数据", syncFriendsInformationResponseData);
+            return Ok(getSyncDataSucceed);
         }
 
     }

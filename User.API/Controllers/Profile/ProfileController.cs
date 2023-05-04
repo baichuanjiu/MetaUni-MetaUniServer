@@ -71,8 +71,8 @@ namespace User.API.Controllers.Profile
             }
 
             GetProfileResponseData getProfileResponseData = new(targetProfile.UUID, targetProfile.Account, JsonSerializer.Deserialize<List<string>>(targetProfile.Roles)!, targetProfile.Gender, targetProfile.Nickname, targetProfile.Avatar, targetProfile.Campus, targetProfile.Department, targetProfile.Major, targetProfile.Grade);
-            ResponseT<GetProfileResponseData> getProfileSuccessed = new(0, "获取成功", getProfileResponseData);
-            return Ok(getProfileSuccessed);
+            ResponseT<GetProfileResponseData> getProfileSucceed = new(0, "获取成功", getProfileResponseData);
+            return Ok(getProfileSucceed);
         }
 
         //用户上传头像
@@ -94,8 +94,8 @@ namespace User.API.Controllers.Profile
                 userprofile!.Avatar = _configuration["MinIO:UserAvatarURLPrefix"]! + fileName;
                 userprofile.UpdatedTime = DateTime.Now;
                 await _userContext.SaveChangesAsync();
-                ResponseT<string> uploadAvatarSuccessed = new(0, "头像上传成功", userprofile.Avatar);
-                return Ok(uploadAvatarSuccessed);
+                ResponseT<string> uploadAvatarSucceed = new(0, "头像上传成功", userprofile.Avatar);
+                return Ok(uploadAvatarSucceed);
             }
             else
             {

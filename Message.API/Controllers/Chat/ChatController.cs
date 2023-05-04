@@ -120,8 +120,8 @@ namespace Message.API.Controllers.Chat
             briefChatTargetInformationList.AddRange(usersInformationList);
 
             SyncChatsResponseData syncChatsResponseData = new(chatsList, briefChatTargetInformationList, currentUpdatedTime);
-            ResponseT<SyncChatsResponseData> getSyncDataSuccessed = new(0, "成功获取待同步的数据", syncChatsResponseData);
-            return Ok(getSyncDataSuccessed);
+            ResponseT<SyncChatsResponseData> getSyncDataSucceed = new(0, "成功获取待同步的数据", syncChatsResponseData);
+            return Ok(getSyncDataSucceed);
         }
 
         [HttpGet("commonChatStatus/sync")]
@@ -140,8 +140,8 @@ namespace Message.API.Controllers.Chat
             await _userContext.SaveChangesAsync();
 
             SyncCommonChatStatusesResponseData syncCommonChatStatusesResponseData = new(dataList, currentTime);
-            ResponseT<SyncCommonChatStatusesResponseData> getSyncDataSuccessed = new(0, "成功获取待同步的数据", syncCommonChatStatusesResponseData);
-            return Ok(getSyncDataSuccessed);
+            ResponseT<SyncCommonChatStatusesResponseData> getSyncDataSucceed = new(0, "成功获取待同步的数据", syncCommonChatStatusesResponseData);
+            return Ok(getSyncDataSucceed);
         }
 
     }

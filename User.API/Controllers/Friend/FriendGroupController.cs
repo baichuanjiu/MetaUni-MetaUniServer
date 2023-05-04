@@ -46,8 +46,8 @@ namespace User.API.Controllers.Friend
             List<FriendsGroup> dataList = await _userContext.FriendsGroups.Where(group => group.UUID == UUID && group.UpdatedTime > queryTime).ToListAsync();
 
             SyncFriendsGroupsResponseData syncFriendsGroupsResponseData = new(dataList, currentUpdatedTime);
-            ResponseT<SyncFriendsGroupsResponseData> getSyncDataSuccessed = new(0, "成功获取待同步的数据", syncFriendsGroupsResponseData);
-            return Ok(getSyncDataSuccessed);
+            ResponseT<SyncFriendsGroupsResponseData> getSyncDataSucceed = new(0, "成功获取待同步的数据", syncFriendsGroupsResponseData);
+            return Ok(getSyncDataSucceed);
         }
     }
 }
