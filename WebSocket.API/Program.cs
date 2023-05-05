@@ -1,5 +1,7 @@
 using Consul;
 using Consul.AspNetCore;
+using Message.API.DataContext.Message;
+using Microsoft.EntityFrameworkCore;
 using Serilog;
 using WebSocket.API;
 using WebSocket.API.Filters;
@@ -36,6 +38,12 @@ builder.Services.AddConsulServiceRegistration(options =>
     options.Port = int.Parse(builder.Configuration["Consul:Port"]!);
 });
 
+//配置DbContext
+builder.Services.AddDbContext<MessageContext>(options =>
+  options.UseSqlServer(builder.Configuration.GetConnectionString("MessageContext")));
+
+builder.Services.AddDatabaseDeveloperPageExceptionFilter();
+
 //配置Redis
 builder.Services.AddStackExchangeRedisCache(options =>
 {
@@ -44,6 +52,9 @@ builder.Services.AddStackExchangeRedisCache(options =>
 
 //配置WebSocketsManager（将所有建立连接的WebSockets当作Static资源进行处理）
 builder.Services.AddSingleton<WebSocketsManager>();
+
+//配置消息队列生产者（消息发布者）
+builder.Services.AddScoped<IMessagePublisher, MessagePublisher>();
 
 //配置消息队列消费者
 builder.Services.AddScoped<MsgConsumer>();

@@ -4,56 +4,11 @@ using RabbitMQ.Client.Events;
 using System.Net.WebSockets;
 using System.Text.Json;
 using System.Text;
+using WebSocket.API.ReusableClass;
+using Message.API.Entities.Chat;
 
 namespace WebSocket.API.RabbitMQ
 {
-    public class CommonMessageDataForClient
-    {
-        public CommonMessageDataForClient(int id, int chatId, int senderId, int receiverId, DateTime createdTime, bool isCustom, bool isRecalled, bool isDeleted, bool isReply, bool isImageMessage, bool isVoiceMessage, string? customType, string? minimumSupportVersion, string? textOnError, string? customMessageContent, int? messageReplied, string? messageText, string? messageImage, string? messageVoice, int sequence)
-        {
-            Id = id;
-            ChatId = chatId;
-            SenderId = senderId;
-            ReceiverId = receiverId;
-            CreatedTime = createdTime;
-            IsCustom = isCustom;
-            IsRecalled = isRecalled;
-            IsDeleted = isDeleted;
-            IsReply = isReply;
-            IsImageMessage = isImageMessage;
-            IsVoiceMessage = isVoiceMessage;
-            CustomType = customType;
-            MinimumSupportVersion = minimumSupportVersion;
-            TextOnError = textOnError;
-            CustomMessageContent = customMessageContent;
-            MessageReplied = messageReplied;
-            MessageText = messageText;
-            MessageImage = messageImage;
-            MessageVoice = messageVoice;
-            Sequence = sequence;
-        }
-
-        public int Id { get; set; }
-        public int ChatId { get; set; }
-        public int SenderId { get; set; }
-        public int ReceiverId { get; set; }
-        public DateTime CreatedTime { get; set; }
-        public bool IsCustom { get; set; }
-        public bool IsRecalled { get; set; }
-        public bool IsDeleted { get; set; }
-        public bool IsReply { get; set; }
-        public bool IsImageMessage { get; set; }
-        public bool IsVoiceMessage { get; set; }
-        public string? CustomType { get; set; }
-        public string? MinimumSupportVersion { get; set; }
-        public string? TextOnError { get; set; }
-        public string? CustomMessageContent { get; set; }
-        public int? MessageReplied { get; set; }
-        public string? MessageText { get; set; }
-        public string? MessageImage { get; set; }
-        public string? MessageVoice { get; set; }
-        public int Sequence { get; set; }
-    }
     public class MsgConsumer
     {
         //依赖注入
@@ -114,6 +69,46 @@ namespace WebSocket.API.RabbitMQ
                                         if (webSocket.State == WebSocketState.Open)
                                         {
                                             var sendDataJson = JsonSerializer.Serialize(new { type = "NewCommonMessage", data = commonMessageData }, new JsonSerializerOptions { PropertyNamingPolicy = JsonNamingPolicy.CamelCase });
+                                            var sendDataBytes = Encoding.UTF8.GetBytes(sendDataJson);
+                                            var sendData = new ArraySegment<byte>(sendDataBytes);
+                                            _ = webSocket.SendAsync(sendData, WebSocketMessageType.Text, true, CancellationToken.None);
+                                            //需要检查是否发送成功，即客户端接收到webSocket发送的消息后需要返回Ack进行确认
+                                            //发送失败的话，需要将该消息送入MongoDB中
+                                            //Ack逻辑还没有写
+                                        }
+                                    }
+                                    else
+                                    {
+                                        //表明无法通过WebSocket发送此消息，需要将该消息视作发送失败，进入MongoDB中
+                                    }
+                                }
+                                else
+                                {
+                                    //表明无法通过WebSocket发送此消息，需要将该消息视作发送失败，进入MongoDB中
+                                }
+                            }
+                            break;
+                        }
+                    case "MessagesBeRead":
+                        {
+                            CommonChatStatus commonChatStatus = JsonSerializer.Deserialize<CommonChatStatus>(json["data"].ToString());
+                            string? ReceiverJWT = await _distributedCache.GetStringAsync(commonChatStatus.UUID.ToString());
+                            if (ReceiverJWT == null)
+                            {
+                                //表明无法通过WebSocket发送此消息，需要将该消息视作发送失败，进入MongoDB中
+                            }
+                            else
+                            {
+                                int UUID = commonChatStatus.UUID;
+                                string JWT = ReceiverJWT;
+                                if (_webSocketsManager.webSockets.ContainsKey(UUID))
+                                {
+                                    if (_webSocketsManager.webSockets[UUID].TryGetValue(JWT, out System.Net.WebSockets.WebSocket? webSocket))
+                                    {
+                                        if (webSocket.State == WebSocketState.Open)
+                                        {
+                                            CommonChatStatusDataForClient commonChatStatusDataForClient = new(commonChatStatus.ChatId,commonChatStatus.LastMessageSendByMe,commonChatStatus.IsRead,commonChatStatus.ReadTime,commonChatStatus.UpdatedTime);
+                                            var sendDataJson = JsonSerializer.Serialize(new { type = "MessagesBeRead", data = commonChatStatusDataForClient }, new JsonSerializerOptions { PropertyNamingPolicy = JsonNamingPolicy.CamelCase });
                                             var sendDataBytes = Encoding.UTF8.GetBytes(sendDataJson);
                                             var sendData = new ArraySegment<byte>(sendDataBytes);
                                             _ = webSocket.SendAsync(sendData, WebSocketMessageType.Text, true, CancellationToken.None);
