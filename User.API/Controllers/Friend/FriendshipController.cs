@@ -95,7 +95,7 @@ namespace User.API.Controllers.Friend
             DateTime queryTime = lastSyncTime.AddMinutes(-10);
             //查找从queryTime到currentTime内更新过的数据
             DateTime currentTime = DateTime.Now;
-
+            
             //查找数据库
             List<BriefUserInformation> dataList = await _userContext.Friendships
                 .Select(ship => new { ship.UUID, ship.FriendId })
