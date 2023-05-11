@@ -1,5 +1,6 @@
 ﻿using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using User.API.Controllers.Login;
 using User.API.Controllers.Profile;
 using User.API.DataContext.User;
 using User.API.Entities.Friend;
@@ -50,6 +51,22 @@ namespace User.API.Controllers.Friend
         public DateTime UpdatedTime { get; set; }
     }
 
+    public class AddFriendForm
+    {
+        public AddFriendForm(int targetId, string? message, string? remark, int friendsGroupId)
+        {
+            TargetId = targetId;
+            Message = message;
+            Remark = remark;
+            FriendsGroupId = friendsGroupId;
+        }
+
+        public int TargetId { get; set; }
+        public string? Message { get; set; }
+        public string? Remark { get; set; }
+        public int FriendsGroupId { get; set; }
+    }
+
 
     [ApiController]
     [Route("/friendship")]
@@ -95,7 +112,7 @@ namespace User.API.Controllers.Friend
             DateTime queryTime = lastSyncTime.AddMinutes(-10);
             //查找从queryTime到currentTime内更新过的数据
             DateTime currentTime = DateTime.Now;
-            
+
             //查找数据库
             List<BriefUserInformation> dataList = await _userContext.Friendships
                 .Select(ship => new { ship.UUID, ship.FriendId })
@@ -116,5 +133,37 @@ namespace User.API.Controllers.Friend
             return Ok(getSyncDataSucceed);
         }
 
+        [HttpPost("request")]
+        public async Task<IActionResult> SendAddFriendRequest([FromBody] AddFriendForm addFriendForm, [FromHeader] string JWT, [FromHeader] int UUID)
+        {
+            //首先进行一系列判定
+            //已经是好友的，不允许发送好友请求
+            //已经发送过请求的，覆写该请求，确保幂等性
+            //不是好友且没发送过请求的，正常新建请求即可
+
+            //判断是否已经是好友
+            var friendship = await _userContext.Friendships.Select(ship => new { ship.UUID, ship.FriendId }).FirstOrDefaultAsync(ship => ship.UUID == UUID && ship.FriendId == addFriendForm.TargetId);
+            if (friendship != null)
+            {
+                _logger.LogWarning("Warning：用户[ {UUID} ]尝试向其好友[ {TargetId} ]发送添加好友请求，可能原因为发送请求前对方正好同意了原先发送的请求，或用户正在尝试绕过前端进行操作。", UUID, addFriendForm.TargetId);
+                return Ok(new ResponseT<string>(2, "你们已经是好友了"));
+            }
+
+            //判断是否已经发送过请求
+            AddFriendRequest? addFriendRequest = await _userContext.AddFriendRequests.FirstOrDefaultAsync(request => request.UUID == UUID && request.TargetId == addFriendForm.TargetId);
+            if (addFriendRequest != null)
+            {
+                addFriendRequest.Message = addFriendForm.Message;
+                addFriendRequest.Remark = addFriendForm.Remark;
+                addFriendRequest.FriendsGroupId = addFriendForm.FriendsGroupId;
+                addFriendRequest.IsPending = false; 
+            }
+            else
+            {
+                _userContext.AddFriendRequests.Add(new AddFriendRequest(id: 0, UUID: UUID, targetId: addFriendForm.TargetId, message: addFriendForm.Message, remark: addFriendForm.Remark, friendsGroupId: addFriendForm.FriendsGroupId, isPending: false));
+            }
+            _userContext.SaveChanges();
+            return Ok(new ResponseT<string>(0, "已成功发送添加好友请求"));
+        }
     }
 }
