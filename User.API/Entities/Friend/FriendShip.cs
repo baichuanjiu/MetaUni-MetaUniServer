@@ -6,6 +6,7 @@ namespace User.API.Entities.Friend
 {
     [Table("Friendship")]
     [Index(nameof(UUID))]
+    [Index(nameof(FriendId))]
     public class Friendship
     {
         [Key]
