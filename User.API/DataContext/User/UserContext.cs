@@ -15,6 +15,7 @@ namespace User.API.DataContext.User
         public DbSet<UserSyncTable> UserSyncTables { get; set; }
         public DbSet<FriendsGroup> FriendsGroups { get; set; }
         public DbSet<Friendship> Friendships { get; set; }
+        public DbSet<AddFriendRequest> AddFriendRequests { get; set; }
 
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
@@ -26,6 +27,7 @@ namespace User.API.DataContext.User
             modelBuilder.Entity<UserSyncTable>();
             modelBuilder.Entity<FriendsGroup>();
             modelBuilder.Entity<Friendship>();
+            modelBuilder.Entity<AddFriendRequest>();
         }
 
     }
