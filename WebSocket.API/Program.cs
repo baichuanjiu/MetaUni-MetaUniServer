@@ -58,6 +58,7 @@ builder.Services.AddScoped<IMessagePublisher, MessagePublisher>();
 
 //配置消息队列消费者
 builder.Services.AddScoped<MsgConsumer>();
+builder.Services.AddScoped<FriendConsumer>();
 
 //配置Filters
 builder.Services.AddScoped<JWTAuthFilterService>();

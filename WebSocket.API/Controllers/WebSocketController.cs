@@ -1,5 +1,4 @@
-﻿using Message.API.Controllers.CommonMessage;
-using Message.API.DataContext.Message;
+﻿using Message.API.DataContext.Message;
 using Message.API.Entities.Chat;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -24,16 +23,18 @@ namespace WebSocket.API.Controllers
         private readonly IConfiguration _configuration;
         private readonly IMessagePublisher _messagePublisher;
         private readonly MsgConsumer _msgConsumer;
+        private readonly FriendConsumer _friendConsumer;
         private readonly MessageContext _messageContext;
         private readonly ILogger<WebSocketController> _logger;
 
-        public WebSocketController(WebSocketsManager webSocketsManager, IDistributedCache distributedCache, IConfiguration configuration, IMessagePublisher messagePublisher, MsgConsumer msgConsumer, MessageContext messageContext, ILogger<WebSocketController> logger)
+        public WebSocketController(WebSocketsManager webSocketsManager, IDistributedCache distributedCache, IConfiguration configuration, IMessagePublisher messagePublisher, MsgConsumer msgConsumer, FriendConsumer friendConsumer, MessageContext messageContext, ILogger<WebSocketController> logger)
         {
             _webSocketsManager = webSocketsManager;
             _distributedCache = distributedCache;
             _configuration = configuration;
             _messagePublisher = messagePublisher;
             _msgConsumer = msgConsumer;
+            _friendConsumer = friendConsumer;
             _messageContext = messageContext;
             _logger = logger;
         }
@@ -121,6 +122,7 @@ namespace WebSocket.API.Controllers
                         case "ReadMessages":
                             ReadMessagesRequestData readMessagesRequestData = JsonSerializer.Deserialize<ReadMessagesRequestData>(json["data"].ToString())!;
                             //记得先验证UUID和JWT，还没做
+                            //记得做安全性检查，确保用户操作的是自己的Chat，还没做
 
                             //在这里处理读取消息操作
                             //将对应Chat的未读消息数清空
