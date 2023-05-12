@@ -6,6 +6,7 @@ using Microsoft.EntityFrameworkCore;
 using Serilog;
 using Minio.AspNetCore;
 using User.API.MinIO;
+using User.API.RabbitMQ;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -58,6 +59,9 @@ builder.Services.AddMinio(options =>
     options.SecretKey = builder.Configuration["MinIO:SecretKey"]!;
 });
 builder.Services.AddScoped<IMinIOService, MinIOService>();
+
+//配置消息队列生产者（消息发布者）
+builder.Services.AddScoped<IMessagePublisher, MessagePublisher>();
 
 //配置Filters
 builder.Services.AddScoped<JWTAuthFilterService>();
