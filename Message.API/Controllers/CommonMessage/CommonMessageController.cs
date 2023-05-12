@@ -9,6 +9,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Caching.Distributed;
 using User.API.Controllers.Profile;
 using User.API.DataContext.User;
+using User.API.Entities.User;
 
 namespace Message.API.Controllers.CommonMessage
 {
@@ -163,12 +164,12 @@ namespace Message.API.Controllers.CommonMessage
 
                 _messageContext.SaveChanges();
 
-                var currentSenderSequence = await _userContext.UserSyncTables.FirstOrDefaultAsync(table => table.UUID == UUID);
-                int newSenderSequence = currentSenderSequence!.SequenceForCommonMessages + 1;
+                UserSyncTable? currentSenderSyncTable = await _userContext.UserSyncTables.FirstOrDefaultAsync(table => table.UUID == UUID);
+                int newSenderSequence = currentSenderSyncTable!.SequenceForCommonMessages + 1;
                 CommonMessageInbox senderInbox = new(id: 0, UUID: UUID, messageId: message.Id, chatId: senderChatId, isDeleted: false, sequence: newSenderSequence);
 
-                var currentReceiverSequence = await _userContext.UserSyncTables.FirstOrDefaultAsync(table => table.UUID == textMessageData.ReceiverId);
-                int newReceiverSequence = currentReceiverSequence!.SequenceForCommonMessages + 1;
+                UserSyncTable? currentReceiverSyncTable = await _userContext.UserSyncTables.FirstOrDefaultAsync(table => table.UUID == textMessageData.ReceiverId);
+                int newReceiverSequence = currentReceiverSyncTable!.SequenceForCommonMessages + 1;
                 CommonMessageInbox receiverInbox = new(id: 0, UUID: textMessageData.ReceiverId, messageId: message.Id, chatId: receiverChatId, isDeleted: false, sequence: newReceiverSequence);
 
                 _messageContext.CommonMessageInboxes.Add(senderInbox);
@@ -177,14 +178,16 @@ namespace Message.API.Controllers.CommonMessage
 
                 //使用事务
                 using var userContextTransaction = _userContext.Database.BeginTransaction();
-                currentSenderSequence.SequenceForCommonMessages++;
-                currentReceiverSequence.SequenceForCommonMessages++;
+                currentSenderSyncTable.SequenceForCommonMessages++;
+                currentSenderSyncTable.UpdatedTimeForChats = message.CreatedTime;
+                currentReceiverSyncTable.SequenceForCommonMessages++;
+                currentReceiverSyncTable.UpdatedTimeForChats = message.CreatedTime;
                 _userContext.SaveChanges();
 
                 userContextTransaction.Commit();
                 messageContextTransaction.Commit();
 
-                CommonMessageDataForClient dataForReceiver = new(message.Id, receiverInbox.ChatId, message.SenderId, message.ReceiverId, message.CreatedTime, message.IsCustom, message.IsRecalled, false, message.IsReply, message.IsImageMessage, message.IsVoiceMessage, message.CustomType, message.MinimumSupportVersion, message.TextOnError, message.CustomMessageContent, message.MessageReplied, message.MessageText, message.MessageImage, message.MessageVoice, currentReceiverSequence.SequenceForCommonMessages);
+                CommonMessageDataForClient dataForReceiver = new(message.Id, receiverInbox.ChatId, message.SenderId, message.ReceiverId, message.CreatedTime, message.IsCustom, message.IsRecalled, false, message.IsReply, message.IsImageMessage, message.IsVoiceMessage, message.CustomType, message.MinimumSupportVersion, message.TextOnError, message.CustomMessageContent, message.MessageReplied, message.MessageText, message.MessageImage, message.MessageVoice, currentReceiverSyncTable.SequenceForCommonMessages);
 
                 //操作完数据库后，使用消息队列发送消息
                 //通过Redis查找目标用户上一次在哪一台服务器连接了WebSocket，尝试由那台服务器发送消息
@@ -199,7 +202,7 @@ namespace Message.API.Controllers.CommonMessage
                 }
 
                 //返回相关信息，供发送者的客户端更新数据库
-                CommonMessageDataForClient dataForSender = new(message.Id, senderInbox.ChatId, message.SenderId, message.ReceiverId, message.CreatedTime, message.IsCustom, message.IsRecalled, false, message.IsReply, message.IsImageMessage, message.IsVoiceMessage, message.CustomType, message.MinimumSupportVersion, message.TextOnError, message.CustomMessageContent, message.MessageReplied, message.MessageText, message.MessageImage, message.MessageVoice, currentSenderSequence.SequenceForCommonMessages);
+                CommonMessageDataForClient dataForSender = new(message.Id, senderInbox.ChatId, message.SenderId, message.ReceiverId, message.CreatedTime, message.IsCustom, message.IsRecalled, false, message.IsReply, message.IsImageMessage, message.IsVoiceMessage, message.CustomType, message.MinimumSupportVersion, message.TextOnError, message.CustomMessageContent, message.MessageReplied, message.MessageText, message.MessageImage, message.MessageVoice, currentSenderSyncTable.SequenceForCommonMessages);
                 ResponseT<CommonMessageDataForClient> sendMessageSucceed = new(0, "发送成功", dataForSender);
                 return Ok(sendMessageSucceed);
             }
