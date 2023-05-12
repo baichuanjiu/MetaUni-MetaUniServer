@@ -9,6 +9,19 @@ namespace User.API.Entities.Friend
     [Index(nameof(FriendId))]
     public class Friendship
     {
+        public Friendship(int id, int UUID, int friendsGroupId, int friendId, DateTime shipCreatedTime, string? remark, bool isFocus, bool isDeleted, DateTime updatedTime)
+        {
+            Id = id;
+            this.UUID = UUID;
+            FriendsGroupId = friendsGroupId;
+            FriendId = friendId;
+            ShipCreatedTime = shipCreatedTime;
+            Remark = remark;
+            IsFocus = isFocus;
+            IsDeleted = isDeleted;
+            UpdatedTime = updatedTime;
+        }
+
         [Key]
         public int Id { get; set; } //主键
         public int UUID { get; set; } //逻辑外键，与UserAccount表关联，标识这条FriendShip属于谁，主体的UUID
