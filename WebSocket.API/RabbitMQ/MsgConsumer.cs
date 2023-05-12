@@ -16,7 +16,7 @@ namespace WebSocket.API.RabbitMQ
         private readonly IDistributedCache _distributedCache;
         private readonly WebSocketsManager _webSocketsManager;
 
-        private IModel channel;
+        private readonly IModel channel;
 
         public MsgConsumer(IConfiguration configuration, IDistributedCache distributedCache, WebSocketsManager webSocketsManager)
         {
