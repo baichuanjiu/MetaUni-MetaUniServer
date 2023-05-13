@@ -71,7 +71,6 @@ namespace WebSocket.API.RabbitMQ
                                             var sendData = new ArraySegment<byte>(sendDataBytes);
                                             _ = webSocket.SendAsync(sendData, WebSocketMessageType.Text, true, CancellationToken.None);
                                             //需要检查是否发送成功，即客户端接收到webSocket发送的消息后需要返回Ack进行确认
-                                            //发送失败的话，需要将该消息送入MongoDB中
                                             //Ack逻辑还没有写
                                         }
                                     }
@@ -110,7 +109,6 @@ namespace WebSocket.API.RabbitMQ
                                             var sendData = new ArraySegment<byte>(sendDataBytes);
                                             _ = webSocket.SendAsync(sendData, WebSocketMessageType.Text, true, CancellationToken.None);
                                             //需要检查是否发送成功，即客户端接收到webSocket发送的消息后需要返回Ack进行确认
-                                            //发送失败的话，需要将该消息送入MongoDB中
                                             //Ack逻辑还没有写
                                         }
                                     }
