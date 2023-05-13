@@ -49,6 +49,44 @@ namespace WebSocket.API.RabbitMQ
 
                 switch (type)
                 {
+                    case "NewAddFriendRequest":
+                        {
+                            int UUID = JsonSerializer.Deserialize<int>(json["data"].ToString());
+                            string? ReceiverJWT = await _distributedCache.GetStringAsync(UUID.ToString());
+                            if (ReceiverJWT == null)
+                            {
+                                //表明无法通过WebSocket发送此消息
+                            }
+                            else
+                            {
+                                string JWT = ReceiverJWT;
+                                if (_webSocketsManager.webSockets.ContainsKey(UUID))
+                                {
+                                    if (_webSocketsManager.webSockets[UUID].TryGetValue(JWT, out System.Net.WebSockets.WebSocket? webSocket))
+                                    {
+                                        if (webSocket.State == WebSocketState.Open)
+                                        {
+                                            var sendDataJson = JsonSerializer.Serialize(new { type = "NewAddFriendRequest" }, new JsonSerializerOptions { PropertyNamingPolicy = JsonNamingPolicy.CamelCase });
+                                            var sendDataBytes = Encoding.UTF8.GetBytes(sendDataJson);
+                                            var sendData = new ArraySegment<byte>(sendDataBytes);
+                                            _ = webSocket.SendAsync(sendData, WebSocketMessageType.Text, true, CancellationToken.None);
+                                            //需要检查是否发送成功，即客户端接收到webSocket发送的消息后需要返回Ack进行确认
+                                            //发送失败的话，需要将该消息送入MongoDB中
+                                            //Ack逻辑还没有写
+                                        }
+                                    }
+                                    else
+                                    {
+                                        //表明无法通过WebSocket发送此消息
+                                    }
+                                }
+                                else
+                                {
+                                    //表明无法通过WebSocket发送此消息
+                                }
+                            }
+                            break;
+                        }
                     case "NewFriendship":
                         {
                             Friendship friendship = JsonSerializer.Deserialize<Friendship>(json["data"].ToString());
