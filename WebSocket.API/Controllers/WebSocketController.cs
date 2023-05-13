@@ -135,7 +135,7 @@ namespace WebSocket.API.Controllers
                             {
                                 chat.NumberOfUnreadMessages = 0;
                                 CommonChatStatus commonChatStatus = (await _messageContext.CommonChatStatuses.FirstOrDefaultAsync(status => status.TargetUserChatId == readMessagesRequestData.ChatId))!;
-                                commonChatStatus.IsRead = true;
+                                commonChatStatus.LastMessageBeReadSendByMe = commonChatStatus.LastMessageSendByMe;
                                 DateTime currentTime = DateTime.Now;
                                 commonChatStatus.ReadTime = currentTime;
                                 commonChatStatus.UpdatedTime = currentTime;

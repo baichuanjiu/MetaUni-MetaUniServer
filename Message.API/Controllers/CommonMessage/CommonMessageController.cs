@@ -134,10 +134,10 @@ namespace Message.API.Controllers.CommonMessage
 
                     receiverChatId = newReceiverChat.Id;
 
-                    CommonChatStatus newSenderChatStatus = new(id: 0, UUID: newSenderChat.UUID, chatId: senderChatId, targetUserChatId: receiverChatId, lastMessageSendByMe: message.Id, isRead: false, readTime: null, updatedTime: message.CreatedTime);
+                    CommonChatStatus newSenderChatStatus = new(id: 0, UUID: newSenderChat.UUID, chatId: senderChatId, targetUserChatId: receiverChatId, lastMessageSendByMe: message.Id,lastMessageBeReadSendByMe: null, readTime: null, updatedTime: message.CreatedTime);
                     _messageContext.CommonChatStatuses.Add(newSenderChatStatus);
 
-                    CommonChatStatus newReceiverChatStatus = new(id: 0, UUID: newReceiverChat.UUID, chatId: receiverChatId, targetUserChatId: senderChatId, lastMessageSendByMe: null, isRead: null, readTime: null, updatedTime: message.CreatedTime);
+                    CommonChatStatus newReceiverChatStatus = new(id: 0, UUID: newReceiverChat.UUID, chatId: receiverChatId, targetUserChatId: senderChatId, lastMessageSendByMe: null, lastMessageBeReadSendByMe: null, readTime: null, updatedTime: message.CreatedTime);
                     _messageContext.CommonChatStatuses.Add(newReceiverChatStatus);
                 }
                 else
@@ -150,9 +150,6 @@ namespace Message.API.Controllers.CommonMessage
 
                     CommonChatStatus? senderChatStatus = await _messageContext.CommonChatStatuses.FirstOrDefaultAsync(status => status.ChatId == senderChat.Id);
                     senderChatStatus!.LastMessageSendByMe = message.Id;
-                    senderChatStatus.IsRead = false;
-                    senderChatStatus.ReadTime = null;
-                    senderChatStatus.UpdatedTime = message.CreatedTime;
 
                     receiverChat!.IsDeleted = false;
                     receiverChat.NumberOfUnreadMessages++;

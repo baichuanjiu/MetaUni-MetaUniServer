@@ -107,7 +107,7 @@ namespace WebSocket.API.RabbitMQ
                                     {
                                         if (webSocket.State == WebSocketState.Open)
                                         {
-                                            CommonChatStatusDataForClient commonChatStatusDataForClient = new(commonChatStatus.ChatId,commonChatStatus.LastMessageSendByMe,commonChatStatus.IsRead,commonChatStatus.ReadTime,commonChatStatus.UpdatedTime);
+                                            CommonChatStatusDataForClient commonChatStatusDataForClient = new(commonChatStatus.ChatId,commonChatStatus.LastMessageBeReadSendByMe,commonChatStatus.ReadTime,commonChatStatus.UpdatedTime);
                                             var sendDataJson = JsonSerializer.Serialize(new { type = "MessagesBeRead", data = commonChatStatusDataForClient }, new JsonSerializerOptions { PropertyNamingPolicy = JsonNamingPolicy.CamelCase });
                                             var sendDataBytes = Encoding.UTF8.GetBytes(sendDataJson);
                                             var sendData = new ArraySegment<byte>(sendDataBytes);
