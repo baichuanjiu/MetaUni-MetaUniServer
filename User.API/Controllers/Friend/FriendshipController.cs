@@ -104,7 +104,8 @@ namespace User.API.Controllers.Friend
         public int FriendsGroupId { get; set; }
     }
 
-    public class AgreeAddFriendRequestResponseData {
+    public class AgreeAddFriendRequestResponseData
+    {
         public AgreeAddFriendRequestResponseData(Friendship friendship)
         {
             Friendship = friendship;
@@ -196,23 +197,23 @@ namespace User.API.Controllers.Friend
             var account = await _userContext.UserAccounts.Select(account => new { account.UUID }).FirstOrDefaultAsync(account => account.UUID == addFriendForm.TargetId);
             if (account == null)
             {
-                _logger.LogWarning("Warning：用户[ {UUID} ]正在尝试向不存在的用户[ {TargetId} ]发送添加好友请求，可能原因为用户正在尝试绕过前端进行操作。", UUID, addFriendForm.TargetId);
+                _logger.LogWarning("Warning：用户[ {UUID} ]正在尝试向不存在的用户[ {targetId} ]发送添加好友请求，可能原因为用户正在尝试绕过前端进行操作。", UUID, addFriendForm.TargetId);
                 return Ok(new ResponseT<string>(2, "您正在尝试添加不存在的用户为好友"));
             }
 
             //安全性检查：FriendsGroupId是否是请求者自己的好友分组
-            var friendsGroupId = await _userContext.FriendsGroups.Select(group => new { group.Id, group.UUID }).FirstOrDefaultAsync(group => group.Id == addFriendForm.FriendsGroupId && group.UUID == UUID);
+            var friendsGroupId = await _userContext.FriendsGroups.Select(group => new { group.Id, group.UUID,group.IsDeleted }).FirstOrDefaultAsync(group => group.Id == addFriendForm.FriendsGroupId && group.UUID == UUID && !group.IsDeleted);
             if (friendsGroupId == null)
             {
-                _logger.LogWarning("Warning：用户[ {UUID} ]在向[ {TargetId} ]发送添加好友请求时尝试使用一个不存在的好友分组[ {friendsGroupId} ]，可能原因为用户正在尝试绕过前端进行操作。", UUID, addFriendForm.TargetId, addFriendForm.FriendsGroupId);
+                _logger.LogWarning("Warning：用户[ {UUID} ]在向[ {targetId} ]发送添加好友请求时尝试使用一个不存在的好友分组[ {friendsGroupId} ]，可能原因为用户正在尝试绕过前端进行操作。", UUID, addFriendForm.TargetId, addFriendForm.FriendsGroupId);
                 return Ok(new ResponseT<string>(3, "您正在尝试使用一个不存在的好友分组"));
             }
 
             //判断是否已经是好友
-            var friendship = await _userContext.Friendships.Select(ship => new { ship.UUID, ship.FriendId }).FirstOrDefaultAsync(ship => ship.UUID == UUID && ship.FriendId == addFriendForm.TargetId);
+            var friendship = await _userContext.Friendships.Select(ship => new { ship.UUID, ship.FriendId,ship.IsDeleted }).FirstOrDefaultAsync(ship => ship.UUID == UUID && ship.FriendId == addFriendForm.TargetId && !ship.IsDeleted);
             if (friendship != null)
             {
-                _logger.LogWarning("Warning：用户[ {UUID} ]尝试向其好友[ {TargetId} ]发送添加好友请求，可能原因为发送请求前对方正好同意了原先发送的请求，或用户正在尝试绕过前端进行操作。", UUID, addFriendForm.TargetId);
+                _logger.LogWarning("Warning：用户[ {UUID} ]尝试向其好友[ {targetId} ]发送添加好友请求，可能原因为发送请求前对方正好同意了原先发送的请求，或用户正在尝试绕过前端进行操作。", UUID, addFriendForm.TargetId);
                 return Ok(new ResponseT<string>(4, "你们已经是好友了"));
             }
 
@@ -230,7 +231,34 @@ namespace User.API.Controllers.Friend
                 _userContext.AddFriendRequests.Add(new AddFriendRequest(id: 0, UUID: UUID, targetId: addFriendForm.TargetId, message: addFriendForm.Message, remark: addFriendForm.Remark, friendsGroupId: addFriendForm.FriendsGroupId, isPending: true));
             }
             _userContext.SaveChanges();
+
+            //在Redis中记录对方存在未读的添加好友请求
+            _ = _distributedCache.SetStringAsync(addFriendForm.TargetId + "HasUnreadAddFriendRequest", "1");
+
+            //尝试通过WebSocket向对方发送消息
+            //通过Redis查找目标用户上一次在哪一台服务器连接了WebSocket，尝试由那台服务器发送消息
+            string? webSocketPort = await _distributedCache.GetStringAsync(addFriendForm.TargetId + "WebSocket");
+            if (webSocketPort != null)
+            {
+                _messagePublisher.SendMessage(new { type = "NewAddFriendRequest", data = addFriendForm.TargetId }, "friend", webSocketPort);
+            }
+
             return Ok(new ResponseT<string>(0, "已成功发送添加好友请求"));
+        }
+
+        [HttpGet("request/hasUnread")]
+        public async Task<IActionResult> CheckHasUnreadRequest([FromHeader] string JWT, [FromHeader] int UUID)
+        {
+            //查看在Redis中是否记录着自己存在未读的添加好友请求
+            string? hasUnreadRequest = await _distributedCache.GetStringAsync(UUID + "HasUnreadAddFriendRequest");
+            if (hasUnreadRequest != null)
+            {
+                return Ok(new ResponseT<bool>(0, "检查成功", true));
+            }
+            else
+            {
+                return Ok(new ResponseT<bool>(0, "检查成功", false));
+            }
         }
 
         [HttpGet("request")]
@@ -247,6 +275,10 @@ namespace User.API.Controllers.Friend
 
             GetAddFriendRequestResponseData getAddFriendRequestResponseData = new(dataList);
             ResponseT<GetAddFriendRequestResponseData> getRequestDataSucceed = new(0, "成功获取所有未处理的好友请求", getAddFriendRequestResponseData);
+
+            //清空在Redis中记录的自己存在未读的添加好友请求
+            _ = _distributedCache.RemoveAsync(UUID + "HasUnreadAddFriendRequest");
+
             return Ok(getRequestDataSucceed);
         }
 
@@ -283,11 +315,25 @@ namespace User.API.Controllers.Friend
             else
             {
                 //安全性检查：agreeAddFriendForm中的FriendsGroupId是否是自己的好友分组
-                var friendsGroupId = await _userContext.FriendsGroups.Select(group => new { group.Id, group.UUID }).FirstOrDefaultAsync(group => group.Id == agreeAddFriendForm.FriendsGroupId && group.UUID == UUID);
+                var friendsGroupId = await _userContext.FriendsGroups.Select(group => new { group.Id, group.UUID, group.IsDeleted }).FirstOrDefaultAsync(group => group.Id == agreeAddFriendForm.FriendsGroupId && group.UUID == UUID && !group.IsDeleted);
                 if (friendsGroupId == null)
                 {
                     _logger.LogWarning("Warning：用户[ {UUID} ]在同意添加好友请求[ {requestId} ]时尝试使用一个不存在的好友分组[ {friendsGroupId} ]，可能原因为用户正在尝试绕过前端进行操作。", UUID, requestId, agreeAddFriendForm.FriendsGroupId);
                     return Ok(new ResponseT<string>(3, "您正在尝试使用一个不存在的好友分组"));
+                }
+
+                //有一种情况，双方都向对方发送了添加好友请求，其中一方先同意了
+                //所以在同意前，先检查一遍，双方是否已经是好友，如果已经是了，将对方的请求设置为已处理
+                //其中一方同意另一方发送的请求后，要检查这一方是否也向另一方发送了添加好友请求，需要将这一方的请求设置为已处理
+
+                //同意前，先检查一遍，双方是否已经是好友
+                var friendship = await _userContext.Friendships.Select(ship => new { ship.UUID, ship.FriendId, ship.IsDeleted }).FirstOrDefaultAsync(ship => ship.UUID == UUID && ship.FriendId == addFriendRequest.UUID && !ship.IsDeleted);
+                if (friendship != null)
+                {
+                    _logger.LogWarning("Warning：用户[ {UUID} ]尝试同意其好友[ {targetId} ]发送的添加好友请求[ {requestId} ]，可能原因为同意请求前对方正好同意了先前由用户发送的请求。", UUID, addFriendRequest.UUID, addFriendRequest.Id);
+                    addFriendRequest.IsPending = false;
+                    _userContext.SaveChanges();
+                    return Ok(new ResponseT<string>(4, "你们已经是好友了"));
                 }
 
                 DateTime dateTime = DateTime.Now;
@@ -306,6 +352,13 @@ namespace User.API.Controllers.Friend
                 syncTableForReceiver!.UpdatedTimeForFriendships = dateTime;
 
                 addFriendRequest.IsPending = false;
+
+                //检查另一方是否也发送了添加好友请求，将另一方的请求设置为已处理
+                AddFriendRequest? anotherAddFriendRequest = await _userContext.AddFriendRequests.FirstOrDefaultAsync(request => request.UUID == UUID && request.TargetId == addFriendRequest.UUID && request.IsPending);
+                if (anotherAddFriendRequest != null)
+                {
+                    anotherAddFriendRequest.IsPending = false;
+                }
                 _userContext.SaveChanges();
 
                 //尝试通过WebSocket向对方发送消息
