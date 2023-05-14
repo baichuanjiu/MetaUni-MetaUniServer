@@ -56,7 +56,7 @@ namespace WebSocket.API.RabbitMQ
                             string? ReceiverJWT = await _distributedCache.GetStringAsync(commonMessageData.ReceiverId.ToString());
                             if (ReceiverJWT == null)
                             {
-                                //表明无法通过WebSocket发送此消息，需要将该消息视作发送失败，进入MongoDB中
+                                //表明无法通过WebSocket发送此消息
                             }
                             else
                             {
@@ -73,18 +73,17 @@ namespace WebSocket.API.RabbitMQ
                                             var sendData = new ArraySegment<byte>(sendDataBytes);
                                             _ = webSocket.SendAsync(sendData, WebSocketMessageType.Text, true, CancellationToken.None);
                                             //需要检查是否发送成功，即客户端接收到webSocket发送的消息后需要返回Ack进行确认
-                                            //发送失败的话，需要将该消息送入MongoDB中
                                             //Ack逻辑还没有写
                                         }
                                     }
                                     else
                                     {
-                                        //表明无法通过WebSocket发送此消息，需要将该消息视作发送失败，进入MongoDB中
+                                        //表明无法通过WebSocket发送此消息
                                     }
                                 }
                                 else
                                 {
-                                    //表明无法通过WebSocket发送此消息，需要将该消息视作发送失败，进入MongoDB中
+                                    //表明无法通过WebSocket发送此消息
                                 }
                             }
                             break;
@@ -95,7 +94,7 @@ namespace WebSocket.API.RabbitMQ
                             string? ReceiverJWT = await _distributedCache.GetStringAsync(commonChatStatus.UUID.ToString());
                             if (ReceiverJWT == null)
                             {
-                                //表明无法通过WebSocket发送此消息，需要将该消息视作发送失败，进入MongoDB中
+                                //表明无法通过WebSocket发送此消息
                             }
                             else
                             {
@@ -113,40 +112,23 @@ namespace WebSocket.API.RabbitMQ
                                             var sendData = new ArraySegment<byte>(sendDataBytes);
                                             _ = webSocket.SendAsync(sendData, WebSocketMessageType.Text, true, CancellationToken.None);
                                             //需要检查是否发送成功，即客户端接收到webSocket发送的消息后需要返回Ack进行确认
-                                            //发送失败的话，需要将该消息送入MongoDB中
                                             //Ack逻辑还没有写
                                         }
                                     }
                                     else
                                     {
-                                        //表明无法通过WebSocket发送此消息，需要将该消息视作发送失败，进入MongoDB中
+                                        //表明无法通过WebSocket发送此消息
                                     }
                                 }
                                 else
                                 {
-                                    //表明无法通过WebSocket发送此消息，需要将该消息视作发送失败，进入MongoDB中
+                                    //表明无法通过WebSocket发送此消息
                                 }
                             }
                             break;
                         }
                     default: { break; }
                 }
-                //理一下逻辑，客户端调用HTTP请求发送消息，首先在对应的Message控制器下处理该HTTP请求
-                //然后Message控制器负责进行数据库的存取（使用事务），存取完成后，使用MessagePublisher发布一条消息进队列
-                //发布消息进入队列后，被MessageConsumer消费，判断一下WebSocket的状态（即用户是否在线）
-                //确认用户在线后，使用WebSocket向指定用户发送消息，向队列返回Ack
-                //用户不在线，则不发送消息，但会将消息存入MongoDB（存在过期时间），并且视作将消息队列中的消息消费（向队列返回Ack）
-                //若使用WebSocket发送消息，但失败了，用户未接收到消息，则也将该消息存入MongoDB
-
-                //对于消息机制，客户端先发送同步请求，同步完成后再开启WebSocket
-                //由于用户同步完成后才会开启WebSocket，故在用户完成同步操作与开启WebSocket之间的时间间隙里，可能会有发送给用户的消息产生，但无法通过WebSocket送达
-                //或者出于某种原因，消息通过WebSocket发送失败了，用户未通过WebSocket接收到某条消息
-                //以上两种情况，通过WebSocket发送失败的消息，都将被存入MongoDB中
-                //开启WebSocket后，客户端会先请求查看MongoDB中是否有未发送给用户的消息
-                //由对应的Message控制器处理用户对MongoDB中消息的同步请求
-                //并且来自MongoDB的消息将与正常流程产生的消息一样，通过WebSocket发送
-                //通过WebSoccket发送失败的消息，进入MongoDB中
-                //客户端会对来自WebSocket的消息进行校验后再存入客户端数据库中
             };
             channel.BasicConsume(queue: queueName, autoAck: true, consumer: consumer);
 
