@@ -3,6 +3,7 @@ using Consul.AspNetCore;
 using Message.API.DataContext.Message;
 using Microsoft.EntityFrameworkCore;
 using Serilog;
+using User.API.DataContext.User;
 using WebSocket.API;
 using WebSocket.API.Filters;
 using WebSocket.API.RabbitMQ;
@@ -39,6 +40,8 @@ builder.Services.AddConsulServiceRegistration(options =>
 });
 
 //≈‰÷√DbContext
+builder.Services.AddDbContext<UserContext>(options =>
+  options.UseSqlServer(builder.Configuration.GetConnectionString("UserContext")));
 builder.Services.AddDbContext<MessageContext>(options =>
   options.UseSqlServer(builder.Configuration.GetConnectionString("MessageContext")));
 
