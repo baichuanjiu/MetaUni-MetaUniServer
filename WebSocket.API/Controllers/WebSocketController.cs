@@ -6,6 +6,7 @@ using Microsoft.Extensions.Caching.Distributed;
 using System.Net.WebSockets;
 using System.Text;
 using System.Text.Json;
+using User.API.DataContext.User;
 using WebSocket.API.Filters;
 using WebSocket.API.RabbitMQ;
 using WebSocket.API.ReusableClass;
@@ -24,10 +25,11 @@ namespace WebSocket.API.Controllers
         private readonly IMessagePublisher _messagePublisher;
         private readonly MsgConsumer _msgConsumer;
         private readonly FriendConsumer _friendConsumer;
+        private readonly UserContext _userContext;
         private readonly MessageContext _messageContext;
         private readonly ILogger<WebSocketController> _logger;
 
-        public WebSocketController(WebSocketsManager webSocketsManager, IDistributedCache distributedCache, IConfiguration configuration, IMessagePublisher messagePublisher, MsgConsumer msgConsumer, FriendConsumer friendConsumer, MessageContext messageContext, ILogger<WebSocketController> logger)
+        public WebSocketController(WebSocketsManager webSocketsManager, IDistributedCache distributedCache, IConfiguration configuration, IMessagePublisher messagePublisher, MsgConsumer msgConsumer, FriendConsumer friendConsumer, UserContext userContext, MessageContext messageContext, ILogger<WebSocketController> logger)
         {
             _webSocketsManager = webSocketsManager;
             _distributedCache = distributedCache;
@@ -35,6 +37,7 @@ namespace WebSocket.API.Controllers
             _messagePublisher = messagePublisher;
             _msgConsumer = msgConsumer;
             _friendConsumer = friendConsumer;
+            _userContext = userContext;
             _messageContext = messageContext;
             _logger = logger;
         }
@@ -111,67 +114,108 @@ namespace WebSocket.API.Controllers
                 //receiveResult = await webSocket.ReceiveAsync(
                 //    new ArraySegment<byte>(buffer), CancellationToken.None);
 
-                if (receiveResult.MessageType == WebSocketMessageType.Text) 
+                if (receiveResult.MessageType == WebSocketMessageType.Text)
                 {
                     string message = Encoding.UTF8.GetString(new ArraySegment<byte>(buffer, 0, receiveResult.Count));
                     Dictionary<string, dynamic>? json = JsonSerializer.Deserialize<Dictionary<string, dynamic>>(message);
                     string type = JsonSerializer.Deserialize<string>(json!["type"]);
+                    int uuid = JsonSerializer.Deserialize<int>(json["uuid"]);
+                    string jwt = JsonSerializer.Deserialize<string>(json["jwt"]);
 
-                    switch (type) 
+                    //验证JWT
+                    string? currentJWT = await _distributedCache.GetStringAsync(uuid.ToString());
+                    if (currentJWT != jwt)
                     {
-                        case "ReadMessages":
-                            ReadMessagesRequestData readMessagesRequestData = JsonSerializer.Deserialize<ReadMessagesRequestData>(json["data"].ToString())!;
-                            //记得先验证UUID和JWT，还没做
-                            //记得做安全性检查，确保用户操作的是自己的Chat，还没做
+                        _logger.LogWarning("Warning：用户[ {UUID} ]在通过WebSocket传输数据时使用了无效的JWT。", uuid);
+                    }
+                    else
+                    {
+                        string? sendDataJson;
+                        byte[] bytes;
+                        ArraySegment<byte> sendData;
 
-                            //在这里处理读取消息操作
-                            //将对应Chat的未读消息数清空
-                            //对应CommonChatStatus的状态更新
-                            //然后尝试向双方发送WebSocket消息
-                            //对于请求方可以直接通过该WebSocket发送请求成功的回执
-                            //另一方则应当通过消息队列的方式发送“对方已读消息”的消息
-                            Chat? chat = await _messageContext.Chats.FirstOrDefaultAsync(chat => chat.Id == readMessagesRequestData.ChatId);
-                            if (chat != null)
-                            {
-                                chat.NumberOfUnreadMessages = 0;
-                                CommonChatStatus commonChatStatus = (await _messageContext.CommonChatStatuses.FirstOrDefaultAsync(status => status.TargetUserChatId == readMessagesRequestData.ChatId))!;
-                                commonChatStatus.LastMessageBeReadSendByMe = commonChatStatus.LastMessageSendByMe;
-                                DateTime currentTime = DateTime.Now;
-                                commonChatStatus.ReadTime = currentTime;
-                                commonChatStatus.UpdatedTime = currentTime;
-                                _messageContext.SaveChanges();
-                                _messageContext.Entry(chat).State = EntityState.Detached;
-                                _messageContext.Entry(commonChatStatus).State = EntityState.Detached;
+                        switch (type)
+                        {
+                            case "ReadMessages":
+                                ReadMessagesRequestData readMessagesRequestData = JsonSerializer.Deserialize<ReadMessagesRequestData>(json["data"].ToString())!;
 
-                                //操作完数据库后，使用消息队列发送消息
-                                //通过Redis查找目标用户上一次在哪一台服务器连接了WebSocket，尝试由那台服务器发送消息
-                                string? webSocketPort = await _distributedCache.GetStringAsync(commonChatStatus.UUID + "WebSocket");
-                                if (webSocketPort != null)
+                                //在这里处理读取消息操作
+                                //将对应Chat的未读消息数清空
+                                //对应CommonChatStatus的状态更新
+                                //然后尝试向双方发送WebSocket消息
+                                //对于请求方可以直接通过该WebSocket发送请求成功的回执
+                                //另一方则应当通过消息队列的方式发送“对方已读消息”的消息
+                                Chat? chat = await _messageContext.Chats.FirstOrDefaultAsync(chat => chat.Id == readMessagesRequestData.ChatId && chat.UUID == uuid);
+                                if (chat != null)
                                 {
-                                    _messagePublisher.SendMessage(new { type = "MessagesBeRead", data = commonChatStatus }, "msg", webSocketPort);
-                                }
-                                else
-                                {
-                                    //表明无法通过WebSocket发送此消息，需要将该消息视作发送失败，进入MongoDB中
+                                    chat.NumberOfUnreadMessages = 0;
+                                    CommonChatStatus commonChatStatus = (await _messageContext.CommonChatStatuses.FirstOrDefaultAsync(status => status.TargetUserChatId == readMessagesRequestData.ChatId))!;
+                                    commonChatStatus.LastMessageBeReadSendByMe = commonChatStatus.LastMessageSendByMe;
+                                    DateTime currentTime = DateTime.Now;
+                                    commonChatStatus.ReadTime = currentTime;
+                                    commonChatStatus.UpdatedTime = currentTime;
+                                    _messageContext.SaveChanges();
+                                    _messageContext.Entry(chat).State = EntityState.Detached;
+                                    _messageContext.Entry(commonChatStatus).State = EntityState.Detached;
+
+                                    //操作完数据库后，使用消息队列发送消息
+                                    //通过Redis查找目标用户上一次在哪一台服务器连接了WebSocket，尝试由那台服务器发送消息
+                                    string? webSocketPort = await _distributedCache.GetStringAsync(commonChatStatus.UUID + "WebSocket");
+                                    if (webSocketPort != null)
+                                    {
+                                        _messagePublisher.SendMessage(new { type = "MessagesBeRead", data = commonChatStatus }, "msg", webSocketPort);
+                                    }
+                                    else
+                                    {
+                                        //表明无法通过WebSocket发送此消息，需要将该消息视作发送失败，进入MongoDB中
+                                    }
+
+                                    ReadMessagesResponseData readMessagesResponseData = new(chatId: readMessagesRequestData.ChatId);
+                                    sendDataJson = JsonSerializer.Serialize(new { type = "ReadMessagesSucceed", data = readMessagesResponseData }, new JsonSerializerOptions { PropertyNamingPolicy = JsonNamingPolicy.CamelCase });
+                                    bytes = Encoding.UTF8.GetBytes(sendDataJson);
+                                    sendData = new(bytes);
+
+                                    await webSocket.SendAsync(
+                                        sendData,
+                                        WebSocketMessageType.Text,
+                                        true,
+                                        CancellationToken.None);
                                 }
 
-                                ReadMessagesResponseData readMessagesResponseData = new(chatId: readMessagesRequestData.ChatId);
-                                var sendDataJson = JsonSerializer.Serialize(new { type = "ReadMessagesSucceed", data = readMessagesResponseData }, new JsonSerializerOptions { PropertyNamingPolicy = JsonNamingPolicy.CamelCase });
-                                byte[] bytes = Encoding.UTF8.GetBytes(sendDataJson);
-                                ArraySegment<byte> sendData = new(bytes);
+                                break;
+                            case "SyncCommonMessages":
+                                SyncCommonMessagesRequestData syncCommonMessagesRequestData = JsonSerializer.Deserialize<SyncCommonMessagesRequestData>(json["data"].ToString())!;
+
+                                //后续再优化，比如说不可能从 Sequence = 0 一次性同步到所有消息
+
+                                var currentSequence = await _userContext.UserSyncTables
+                                    .Select(table => new { table.UUID, table.SequenceForCommonMessages })
+                                    .FirstOrDefaultAsync(table => table.UUID == uuid);
+
+                                var dataList = await _messageContext.CommonMessageInboxes
+                                    .Select(inbox => new { inbox.UUID, inbox.MessageId, inbox.ChatId, inbox.IsDeleted, inbox.Sequence })
+                                    .Where(inbox => inbox.UUID == uuid && inbox.Sequence > syncCommonMessagesRequestData.Sequence)
+                                    .Join(_messageContext.CommonMessages,
+                                    inbox => inbox.MessageId, message => message.Id, (inbox, message) => new { message.Id, inbox.ChatId, message.SenderId, message.ReceiverId, message.CreatedTime, message.IsCustom, message.IsRecalled, inbox.IsDeleted, message.IsReply, message.IsImageMessage, message.IsVoiceMessage, message.CustomType, message.MinimumSupportVersion, message.TextOnError, message.CustomMessageContent, message.MessageReplied, message.MessageText, message.MessageImage, message.MessageVoice, inbox.Sequence })
+                                    .OrderBy(data => data.Sequence)
+                                    .GroupBy(data => data.ChatId)
+                                    .ToListAsync();
+
+                                sendDataJson = JsonSerializer.Serialize(new { type = "SyncCommonMessagesSucceed", dataList, currentSequence = currentSequence!.SequenceForCommonMessages }, new JsonSerializerOptions { PropertyNamingPolicy = JsonNamingPolicy.CamelCase });
+                                bytes = Encoding.UTF8.GetBytes(sendDataJson);
+                                sendData = new(bytes);
 
                                 await webSocket.SendAsync(
                                     sendData,
                                     WebSocketMessageType.Text,
                                     true,
                                     CancellationToken.None);
-                            }
 
-                            break;
+                                break;
+                        }
                     }
-
                 }
-                
+
                 receiveResult = await webSocket.ReceiveAsync(
                     new ArraySegment<byte>(buffer), CancellationToken.None);
 
