@@ -113,3 +113,31 @@ services:
       Consul__IP: host.docker.internal
       Consul__Port: 46688
 
+  miniapp.api:
+    image: ${DOCKER_REGISTRY-}miniappapi
+    build:
+      context: .
+      dockerfile: MiniApp.API/Dockerfile
+    ports:
+      - 46694:80
+      - 46695:443
+    environment:
+      Consul__ID: MiniApp.API.46694
+      Consul__Name: MetaUni.MiniApp.API
+      Consul__IP: host.docker.internal
+      Consul__Port: 46694
+
+  miniapp.api2:
+    image: ${DOCKER_REGISTRY-}miniappapi
+    build:
+      context: .
+      dockerfile: MiniApp.API/Dockerfile
+    ports:
+      - 46696:80
+      - 46697:443
+    environment:
+      Consul__ID: MiniApp.API.46696
+      Consul__Name: MetaUni.MiniApp.API
+      Consul__IP: host.docker.internal
+      Consul__Port: 46696
+

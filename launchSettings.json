@@ -6,7 +6,8 @@
       "serviceActions": {
         "user.api": "StartDebugging",
         "websocket.api": "StartDebugging",
-        "message.api": "StartDebugging"
+        "message.api": "StartDebugging",
+        "miniapp.api": "StartDebugging"
       }
     }
   }
