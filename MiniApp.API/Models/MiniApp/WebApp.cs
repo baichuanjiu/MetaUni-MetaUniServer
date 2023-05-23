@@ -5,6 +5,17 @@ namespace MiniApp.API.Models.MiniApp
 {
     public class WebApp
     {
+        public WebApp(string? id, string name, string avatar, string description, string backgroundImage, string URL, double trendingValue)
+        {
+            Id = id;
+            Name = name;
+            Avatar = avatar;
+            Description = description;
+            BackgroundImage = backgroundImage;
+            this.URL = URL;
+            TrendingValue = trendingValue;
+        }
+
         [BsonId]
         [BsonRepresentation(BsonType.ObjectId)]
         public string? Id { get; set; } //MongoDB中存储的_Id

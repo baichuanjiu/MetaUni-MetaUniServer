@@ -11,7 +11,6 @@ namespace MiniApp.API.MongoDBServices.MiniApp
         private readonly IMongoCollection<ClientApp> _clientAppsCollection;
         private readonly IMongoCollection<WebApp> _webAppsCollection;
         private readonly IMongoCollection<BsonDocument> _bsonDocumentsCollection;
-        private readonly IMongoCollection<dynamic> _dynamicCollection;
 
         public MiniAppService(IOptions<MiniAppCollectionSettings> miniAppCollectionSettings)
         {
@@ -29,13 +28,28 @@ namespace MiniApp.API.MongoDBServices.MiniApp
 
             _bsonDocumentsCollection = mongoDatabase.GetCollection<BsonDocument>(
                 miniAppCollectionSettings.Value.MiniAppCollectionName);
-
-            _dynamicCollection = mongoDatabase.GetCollection<dynamic>(
-                miniAppCollectionSettings.Value.MiniAppCollectionName);
         }
 
-        public IEnumerable<object> GetMiniApps() {
-            return _dynamicCollection.Find(new BsonDocument()).ToEnumerable();
+        //根据Rank（排名）获取MiniApps信息（每次固定最多获取20个）
+        public string GetMiniAppsByRank(int rank) {
+            return _bsonDocumentsCollection
+                .Find(new BsonDocument())
+                .Project(app => new { Id = app["_id"].ToString(), Type = app["Type"], Name = app["Name"], Avatar = app["Avatar"], Description = app["Description"], BackgroundImage = app["BackgroundImage"], TrendingValue = app["TrendingValue"] })
+                .SortByDescending(app => app["TrendingValue"])
+                .Skip(rank)
+                .Limit(20)
+                .ToList()
+                .ToJson();
+        }
+
+        public ClientApp GetClientAppById(string id)
+        {
+            return _clientAppsCollection.Find(app => app.Id == id).FirstOrDefault();
+        }
+
+        public WebApp GetWebAppById(string id)
+        {
+            return _webAppsCollection.Find(app => app.Id == id).FirstOrDefault();
         }
     }
 }

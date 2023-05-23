@@ -1,9 +1,15 @@
 using Consul;
 using Consul.AspNetCore;
+using Microsoft.EntityFrameworkCore;
+using MiniApp.API.DataCollection.Introduction;
 using MiniApp.API.DataCollection.MiniApp;
+using MiniApp.API.DataCollection.Review;
 using MiniApp.API.Filters;
+using MiniApp.API.MongoDBServices.Introduction;
 using MiniApp.API.MongoDBServices.MiniApp;
+using MiniApp.API.MongoDBServices.Review;
 using Serilog;
+using User.API.DataContext.User;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -36,11 +42,23 @@ builder.Services.AddConsulServiceRegistration(options =>
     options.Port = int.Parse(builder.Configuration["Consul:Port"]!);
 });
 
+//≈‰÷√DbContext
+builder.Services.AddDbContext<UserContext>(options =>
+  options.UseSqlServer(builder.Configuration.GetConnectionString("UserContext")));
+
+builder.Services.AddDatabaseDeveloperPageExceptionFilter();
+
 //≈‰÷√DataCollection
 builder.Services.Configure<MiniAppCollectionSettings>(
     builder.Configuration.GetSection("MiniAppCollection"));
+builder.Services.Configure<MiniAppIntroductionCollectionSettings>(
+    builder.Configuration.GetSection("MiniAppIntroductionCollection"));
+builder.Services.Configure<MiniAppReviewCollectionSettings>(
+    builder.Configuration.GetSection("MiniAppReviewCollection"));
 
 builder.Services.AddSingleton<MiniAppService>();
+builder.Services.AddSingleton<MiniAppIntroductionService>();
+builder.Services.AddSingleton<MiniAppReviewService>();
 
 //≈‰÷√Redis
 builder.Services.AddStackExchangeRedisCache(options =>
