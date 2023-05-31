@@ -14,7 +14,6 @@ namespace User.API.Entities.User
         public int UUID { get; set; } //逻辑外键，与UserAccount表关联
         [MaxLength(10)]
         public string Account { get; set; } //账号，一般为学号或工号
-        public string Roles { get; set; } //角色，以JSON形式存储的字符串数组，学生、教师、管理员等
         [MaxLength(5)]
         public string Surname { get; set; } //真实姓名中的姓氏
         [MaxLength(5)]
