@@ -1,4 +1,6 @@
 ﻿using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Caching.Distributed;
 using MiniApp.API.Filters;
 using MiniApp.API.Models.Introduction;
 using MiniApp.API.Models.MiniApp;
@@ -102,14 +104,16 @@ namespace MiniApp.API.Controllers
     {
         //依赖注入
         private readonly UserContext _userContext;
+        private readonly IDistributedCache _distributedCache;
         private readonly MiniAppService _miniAppService;
         private readonly MiniAppIntroductionService _miniAppIntroductionService;
         private readonly MiniAppReviewService _miniAppReviewService;
         private readonly ILogger<MiniAppController> _logger;
 
-        public MiniAppController(UserContext userContext, MiniAppService miniAppService, MiniAppIntroductionService miniAppIntroductionService, MiniAppReviewService miniAppReviewService, ILogger<MiniAppController> logger)
+        public MiniAppController(UserContext userContext, IDistributedCache distributedCache, MiniAppService miniAppService, MiniAppIntroductionService miniAppIntroductionService, MiniAppReviewService miniAppReviewService, ILogger<MiniAppController> logger)
         {
             _userContext = userContext;
+            _distributedCache = distributedCache;
             _miniAppService = miniAppService;
             _miniAppIntroductionService = miniAppIntroductionService;
             _miniAppReviewService = miniAppReviewService;
@@ -150,8 +154,30 @@ namespace MiniApp.API.Controllers
                             }
                             else
                             {
-                                string nickname = _userContext.UserProfiles.Select(profile => new {profile.UUID,profile.Nickname}).FirstOrDefault(profile => profile.UUID == miniAppReview.UUID)!.Nickname;
-                                response = new(clientApp, miniAppIntroduction, new MiniAppReviewDataForClient(miniAppReview,nickname));
+                                //优先查找Redis缓存中的数据
+                                string? briefUserInformationJson = _distributedCache.GetString(miniAppReview.UUID.ToString() + "BriefUserInfo");
+                                if (briefUserInformationJson != null)
+                                {
+                                    BriefUserInformation briefUserInformation = JsonSerializer.Deserialize<BriefUserInformation>(briefUserInformationJson)!;
+                                    string nickname = briefUserInformation.Nickname;
+                                    response = new(clientApp, miniAppIntroduction, new MiniAppReviewDataForClient(miniAppReview, nickname));
+                                }
+                                else 
+                                {
+                                    //查找数据库
+                                    var targetInformation = _userContext.UserProfiles.Select(profile => new { profile.UUID, profile.Avatar, profile.Nickname, profile.UpdatedTime }).FirstOrDefault(profile => profile.UUID == miniAppReview.UUID);
+                                    BriefUserInformation briefUserInformation = new(targetInformation!.UUID, targetInformation.Avatar, targetInformation.Nickname, targetInformation.UpdatedTime);
+
+                                    //往Redis里做缓存
+                                    //设置缓存在Redis中的过期时间
+                                    DistributedCacheEntryOptions options = new DistributedCacheEntryOptions().SetAbsoluteExpiration(TimeSpan.FromMinutes(3));
+                                    options.SetSlidingExpiration(TimeSpan.FromSeconds(60));
+                                    //将数据存入Redis
+                                    _distributedCache.SetString(miniAppReview.UUID.ToString() + "BriefUserInfo", JsonSerializer.Serialize(briefUserInformation), options);
+
+                                    string nickname = briefUserInformation.Nickname;
+                                    response = new(clientApp, miniAppIntroduction, new MiniAppReviewDataForClient(miniAppReview, nickname));
+                                }
                             }
                             ResponseT<GetClientAppIntroductionResponse> getIntroductionSucceed = new(code: 0, message: "获取成功", data: response);
                             return Ok(getIntroductionSucceed);
@@ -182,8 +208,30 @@ namespace MiniApp.API.Controllers
                             }
                             else
                             {
-                                string nickname = _userContext.UserProfiles.Select(profile => new { profile.UUID, profile.Nickname }).FirstOrDefault(profile => profile.UUID == miniAppReview.UUID)!.Nickname;
-                                response = new(webApp, miniAppIntroduction, new MiniAppReviewDataForClient(miniAppReview, nickname));
+                                //优先查找Redis缓存中的数据
+                                string? briefUserInformationJson = _distributedCache.GetString(miniAppReview.UUID.ToString() + "BriefUserInfo");
+                                if (briefUserInformationJson != null)
+                                {
+                                    BriefUserInformation briefUserInformation = JsonSerializer.Deserialize<BriefUserInformation>(briefUserInformationJson)!;
+                                    string nickname = briefUserInformation.Nickname;
+                                    response = new(webApp, miniAppIntroduction, new MiniAppReviewDataForClient(miniAppReview, nickname));
+                                }
+                                else
+                                {
+                                    //查找数据库
+                                    var targetInformation = _userContext.UserProfiles.Select(profile => new { profile.UUID, profile.Avatar, profile.Nickname, profile.UpdatedTime }).FirstOrDefault(profile => profile.UUID == miniAppReview.UUID);
+                                    BriefUserInformation briefUserInformation = new(targetInformation!.UUID, targetInformation.Avatar, targetInformation.Nickname, targetInformation.UpdatedTime);
+
+                                    //往Redis里做缓存
+                                    //设置缓存在Redis中的过期时间
+                                    DistributedCacheEntryOptions options = new DistributedCacheEntryOptions().SetAbsoluteExpiration(TimeSpan.FromMinutes(3));
+                                    options.SetSlidingExpiration(TimeSpan.FromSeconds(60));
+                                    //将数据存入Redis
+                                    _distributedCache.SetString(miniAppReview.UUID.ToString() + "BriefUserInfo", JsonSerializer.Serialize(briefUserInformation), options);
+
+                                    string nickname = briefUserInformation.Nickname;
+                                    response = new(webApp, miniAppIntroduction, new MiniAppReviewDataForClient(miniAppReview, nickname));
+                                }
                             }
                             ResponseT<GetWebAppIntroductionResponse> getIntroductionSucceed = new(code: 0, message: "获取成功", data: response);
                             return Ok(getIntroductionSucceed);

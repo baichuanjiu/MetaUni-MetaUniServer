@@ -1,8 +1,8 @@
 ﻿using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Caching.Distributed;
 using System.Text.Json;
 using User.API.DataContext.User;
-using User.API.Entities.Friend;
 using User.API.Entities.User;
 using User.API.Filters;
 using User.API.MinIO;
@@ -111,13 +111,15 @@ namespace User.API.Controllers.Profile
         //依赖注入
         private readonly IConfiguration _configuration;
         private readonly UserContext _userContext;
+        private readonly IDistributedCache _distributedCache;
         private readonly IMinIOService _minIOService;
         private readonly ILogger<ProfileController> _logger;
 
-        public ProfileController(IConfiguration configuration, UserContext userContext, IMinIOService minIOService, ILogger<ProfileController> logger)
+        public ProfileController(IConfiguration configuration, UserContext userContext, IDistributedCache distributedCache, IMinIOService minIOService, ILogger<ProfileController> logger)
         {
             _configuration = configuration;
             _userContext = userContext;
+            _distributedCache = distributedCache;
             _minIOService = minIOService;
             _logger = logger;
         }
@@ -127,19 +129,20 @@ namespace User.API.Controllers.Profile
         public async Task<IActionResult> GetProfile(int queryUUID, [FromHeader] string JWT, [FromHeader] int UUID)
         {
             //查找数据库
-            var targetProfile = await _userContext.UserProfiles.Select(profile => new { profile.UUID, profile.Account, profile.Roles, profile.Gender, profile.Nickname, profile.Avatar, profile.Campus, profile.Department, profile.Major, profile.Grade, profile.UpdatedTime }).FirstOrDefaultAsync(profile => profile.UUID == queryUUID);
+            var targetProfile = await _userContext.UserProfiles.Select(profile => new { profile.UUID, profile.Account, profile.Gender, profile.Nickname, profile.Avatar, profile.Campus, profile.Department, profile.Major, profile.Grade, profile.UpdatedTime }).FirstOrDefaultAsync(profile => profile.UUID == queryUUID);
             if (targetProfile == null)
             {
                 _logger.LogWarning("Warning：用户[ {UUID} ]企图查询一个不存在的用户[ {queryUUID} ]的个人信息。", UUID, queryUUID);
                 ResponseT<string> getProfileFailed = new(2, "没有找到目标用户的个人信息");
                 return Ok(getProfileFailed);
             }
+            List<string> roles = await _userContext.UserRoles.Select(role => new { role.UUID ,role.Role}).Where(role => role.UUID == queryUUID).Select(role => role.Role).ToListAsync();
             //在这里判断一轮，查询对象是 自己 / 好友 / 陌生人
             //然后返回不一样的结果
             if (queryUUID == UUID)
             {
                 //查询对象是自己
-                GetProfileResponseData<BaseProfile> getProfileResponseData = new(0, new BaseProfile(targetProfile.UUID, targetProfile.Account, JsonSerializer.Deserialize<List<string>>(targetProfile.Roles)!, targetProfile.Gender, targetProfile.Nickname, targetProfile.Avatar, targetProfile.Campus, targetProfile.Department, targetProfile.Major, targetProfile.Grade, targetProfile.UpdatedTime));
+                GetProfileResponseData<BaseProfile> getProfileResponseData = new(0, new BaseProfile(targetProfile.UUID, targetProfile.Account, roles, targetProfile.Gender, targetProfile.Nickname, targetProfile.Avatar, targetProfile.Campus, targetProfile.Department, targetProfile.Major, targetProfile.Grade, targetProfile.UpdatedTime));
                 ResponseT<GetProfileResponseData<BaseProfile>> getProfileSucceed = new(0, "获取成功", getProfileResponseData);
                 return Ok(getProfileSucceed);
             }
@@ -149,14 +152,14 @@ namespace User.API.Controllers.Profile
             if (friendship != null)
             {
                 //查询对象是好友
-                GetProfileResponseData<FriendProfile> getProfileResponseData = new(1, new FriendProfile(targetProfile.UUID, targetProfile.Account, JsonSerializer.Deserialize<List<string>>(targetProfile.Roles)!, targetProfile.Gender, targetProfile.Nickname, friendship.Remark, targetProfile.Avatar, friendship.FriendsGroupId, targetProfile.Campus, targetProfile.Department, targetProfile.Major, targetProfile.Grade, targetProfile.UpdatedTime));
+                GetProfileResponseData<FriendProfile> getProfileResponseData = new(1, new FriendProfile(targetProfile.UUID, targetProfile.Account, roles, targetProfile.Gender, targetProfile.Nickname, friendship.Remark, targetProfile.Avatar, friendship.FriendsGroupId, targetProfile.Campus, targetProfile.Department, targetProfile.Major, targetProfile.Grade, targetProfile.UpdatedTime));
                 ResponseT<GetProfileResponseData<FriendProfile>> getProfileSucceed = new(0, "获取成功", getProfileResponseData);
                 return Ok(getProfileSucceed);
             }
             else
             {
                 //查询对象是陌生人
-                GetProfileResponseData<BaseProfile> getProfileResponseData = new(2, new BaseProfile(targetProfile.UUID, targetProfile.Account, JsonSerializer.Deserialize<List<string>>(targetProfile.Roles)!, targetProfile.Gender, targetProfile.Nickname, targetProfile.Avatar, targetProfile.Campus, targetProfile.Department, targetProfile.Major, targetProfile.Grade, targetProfile.UpdatedTime));
+                GetProfileResponseData<BaseProfile> getProfileResponseData = new(2, new BaseProfile(targetProfile.UUID, targetProfile.Account, roles, targetProfile.Gender, targetProfile.Nickname, targetProfile.Avatar, targetProfile.Campus, targetProfile.Department, targetProfile.Major, targetProfile.Grade, targetProfile.UpdatedTime));
                 ResponseT<GetProfileResponseData<BaseProfile>> getProfileSucceed = new(0, "获取成功", getProfileResponseData);
                 return Ok(getProfileSucceed);
             }
@@ -166,16 +169,37 @@ namespace User.API.Controllers.Profile
         [HttpGet("brief/{queryUUID}")]
         public async Task<IActionResult> GetBriefUserInformation(int queryUUID, [FromHeader] string JWT, [FromHeader] int UUID)
         {
-            //查找数据库
-            var targetInformation = await _userContext.UserProfiles.Select(profile => new { profile.UUID, profile.Avatar, profile.Nickname, profile.UpdatedTime }).FirstOrDefaultAsync(profile => profile.UUID == queryUUID);
-            if (targetInformation == null)
+            //优先查找Redis缓存中的数据
+            string? briefUserInformationJson = _distributedCache.GetString(queryUUID.ToString()+"BriefUserInfo");
+            if (briefUserInformationJson != null)
             {
-                _logger.LogWarning("Warning：用户[ {UUID} ]企图查询一个不存在的用户[ {queryUUID} ]的个人信息。", UUID, queryUUID);
-                ResponseT<string> getInformationFailed = new(2, "没有找到目标用户的个人信息");
-                return Ok(getInformationFailed);
+                BriefUserInformation briefUserInformation = JsonSerializer.Deserialize<BriefUserInformation>(briefUserInformationJson)!;
+                ResponseT<BriefUserInformation> getInformationSucceed = new(0, "获取成功", briefUserInformation);
+                return Ok(getInformationSucceed);
             }
-            ResponseT<BriefUserInformation> getInformationSucceed = new(0, "获取成功", new BriefUserInformation(targetInformation.UUID, targetInformation.Avatar, targetInformation.Nickname, targetInformation.UpdatedTime));
-            return Ok(getInformationSucceed);
+            else 
+            {
+                //查找数据库
+                var targetInformation = await _userContext.UserProfiles.Select(profile => new { profile.UUID, profile.Avatar, profile.Nickname, profile.UpdatedTime }).FirstOrDefaultAsync(profile => profile.UUID == queryUUID);
+                if (targetInformation == null)
+                {
+                    _logger.LogWarning("Warning：用户[ {UUID} ]企图查询一个不存在的用户[ {queryUUID} ]的个人信息。", UUID, queryUUID);
+                    ResponseT<string> getInformationFailed = new(2, "没有找到目标用户的个人信息");
+                    return Ok(getInformationFailed);
+                }
+
+                BriefUserInformation briefUserInformation = new(targetInformation.UUID, targetInformation.Avatar, targetInformation.Nickname, targetInformation.UpdatedTime);
+
+                //往Redis里做缓存
+                //设置缓存在Redis中的过期时间
+                DistributedCacheEntryOptions options = new DistributedCacheEntryOptions().SetAbsoluteExpiration(TimeSpan.FromMinutes(3));
+                options.SetSlidingExpiration(TimeSpan.FromSeconds(60));
+                //将数据存入Redis
+                await _distributedCache.SetStringAsync(queryUUID.ToString() + "BriefUserInfo", JsonSerializer.Serialize(briefUserInformation), options);
+
+                ResponseT<BriefUserInformation> getInformationSucceed = new(0, "获取成功", briefUserInformation);
+                return Ok(getInformationSucceed);
+            }
         }
 
         //用户上传头像
