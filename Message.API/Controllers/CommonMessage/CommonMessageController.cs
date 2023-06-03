@@ -7,7 +7,6 @@ using Message.API.ReusableClass;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Caching.Distributed;
-using User.API.Controllers.Profile;
 using User.API.DataContext.User;
 using User.API.Entities.User;
 
@@ -82,9 +81,9 @@ namespace Message.API.Controllers.CommonMessage
         private readonly MessageContext _messageContext;
         private readonly IDistributedCache _distributedCache;
         private readonly IMessagePublisher _messagePublisher;
-        private readonly ILogger<ProfileController> _logger;
+        private readonly ILogger<CommonMessageController> _logger;
 
-        public CommonMessageController(UserContext userContext, MessageContext messageContext, IDistributedCache distributedCache, IMessagePublisher messagePublisher, ILogger<ProfileController> logger)
+        public CommonMessageController(UserContext userContext, MessageContext messageContext, IDistributedCache distributedCache, IMessagePublisher messagePublisher, ILogger<CommonMessageController> logger)
         {
             _userContext = userContext;
             _messageContext = messageContext;

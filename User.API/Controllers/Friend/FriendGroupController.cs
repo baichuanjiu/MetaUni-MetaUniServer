@@ -27,9 +27,9 @@ namespace User.API.Controllers.Friend
     {
         //依赖注入
         private readonly UserContext _userContext;
-        private readonly ILogger<ProfileController> _logger;
+        private readonly ILogger<FriendGroupController> _logger;
 
-        public FriendGroupController(UserContext userContext, ILogger<ProfileController> logger)
+        public FriendGroupController(UserContext userContext, ILogger<FriendGroupController> logger)
         {
             _userContext = userContext;
             _logger = logger;

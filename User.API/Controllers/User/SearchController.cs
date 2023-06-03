@@ -1,6 +1,5 @@
 ﻿using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
-using User.API.Controllers.Profile;
 using User.API.DataContext.User;
 using User.API.Filters;
 using User.API.ReusableClass;
@@ -37,9 +36,9 @@ namespace User.API.Controllers.User
     {
         //依赖注入
         private readonly UserContext _userContext;
-        private readonly ILogger<ProfileController> _logger;
+        private readonly ILogger<SearchController> _logger;
 
-        public SearchController(UserContext userContext, ILogger<ProfileController> logger)
+        public SearchController(UserContext userContext, ILogger<SearchController> logger)
         {
             _userContext = userContext;
             _logger = logger;

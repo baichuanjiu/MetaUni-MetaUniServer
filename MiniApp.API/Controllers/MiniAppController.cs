@@ -173,7 +173,7 @@ namespace MiniApp.API.Controllers
                                     DistributedCacheEntryOptions options = new DistributedCacheEntryOptions().SetAbsoluteExpiration(TimeSpan.FromMinutes(3));
                                     options.SetSlidingExpiration(TimeSpan.FromSeconds(60));
                                     //将数据存入Redis
-                                    _distributedCache.SetString(miniAppReview.UUID.ToString() + "BriefUserInfo", JsonSerializer.Serialize(briefUserInformation), options);
+                                    _distributedCache.SetStringAsync(miniAppReview.UUID.ToString() + "BriefUserInfo", JsonSerializer.Serialize(briefUserInformation), options);
 
                                     string nickname = briefUserInformation.Nickname;
                                     response = new(clientApp, miniAppIntroduction, new MiniAppReviewDataForClient(miniAppReview, nickname));
@@ -227,7 +227,7 @@ namespace MiniApp.API.Controllers
                                     DistributedCacheEntryOptions options = new DistributedCacheEntryOptions().SetAbsoluteExpiration(TimeSpan.FromMinutes(3));
                                     options.SetSlidingExpiration(TimeSpan.FromSeconds(60));
                                     //将数据存入Redis
-                                    _distributedCache.SetString(miniAppReview.UUID.ToString() + "BriefUserInfo", JsonSerializer.Serialize(briefUserInformation), options);
+                                    _distributedCache.SetStringAsync(miniAppReview.UUID.ToString() + "BriefUserInfo", JsonSerializer.Serialize(briefUserInformation), options);
 
                                     string nickname = briefUserInformation.Nickname;
                                     response = new(webApp, miniAppIntroduction, new MiniAppReviewDataForClient(miniAppReview, nickname));

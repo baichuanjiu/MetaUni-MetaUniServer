@@ -1,7 +1,6 @@
 ﻿using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Caching.Distributed;
-using User.API.Controllers.Profile;
 using User.API.DataContext.User;
 using User.API.Entities.Friend;
 using User.API.Entities.User;
@@ -122,11 +121,11 @@ namespace User.API.Controllers.Friend
     {
         //依赖注入
         private readonly UserContext _userContext;
-        private readonly ILogger<ProfileController> _logger;
+        private readonly ILogger<FriendshipController> _logger;
         private readonly IDistributedCache _distributedCache;
         private readonly IMessagePublisher _messagePublisher;
 
-        public FriendshipController(UserContext userContext, ILogger<ProfileController> logger, IDistributedCache distributedCache, IMessagePublisher messagePublisher)
+        public FriendshipController(UserContext userContext, ILogger<FriendshipController> logger, IDistributedCache distributedCache, IMessagePublisher messagePublisher)
         {
             _userContext = userContext;
             _logger = logger;

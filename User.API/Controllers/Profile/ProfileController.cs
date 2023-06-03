@@ -136,7 +136,7 @@ namespace User.API.Controllers.Profile
                 ResponseT<string> getProfileFailed = new(2, "没有找到目标用户的个人信息");
                 return Ok(getProfileFailed);
             }
-            List<string> roles = await _userContext.UserRoles.Select(role => new { role.UUID ,role.Role}).Where(role => role.UUID == queryUUID).Select(role => role.Role).ToListAsync();
+            List<string> roles = await _userContext.UserRoles.Select(role => new { role.UUID, role.Role }).Where(role => role.UUID == queryUUID).Select(role => role.Role).ToListAsync();
             //在这里判断一轮，查询对象是 自己 / 好友 / 陌生人
             //然后返回不一样的结果
             if (queryUUID == UUID)
@@ -170,14 +170,14 @@ namespace User.API.Controllers.Profile
         public async Task<IActionResult> GetBriefUserInformation(int queryUUID, [FromHeader] string JWT, [FromHeader] int UUID)
         {
             //优先查找Redis缓存中的数据
-            string? briefUserInformationJson = _distributedCache.GetString(queryUUID.ToString()+"BriefUserInfo");
+            string? briefUserInformationJson = _distributedCache.GetString(queryUUID.ToString() + "BriefUserInfo");
             if (briefUserInformationJson != null)
             {
                 BriefUserInformation briefUserInformation = JsonSerializer.Deserialize<BriefUserInformation>(briefUserInformationJson)!;
                 ResponseT<BriefUserInformation> getInformationSucceed = new(0, "获取成功", briefUserInformation);
                 return Ok(getInformationSucceed);
             }
-            else 
+            else
             {
                 //查找数据库
                 var targetInformation = await _userContext.UserProfiles.Select(profile => new { profile.UUID, profile.Avatar, profile.Nickname, profile.UpdatedTime }).FirstOrDefaultAsync(profile => profile.UUID == queryUUID);
@@ -195,7 +195,7 @@ namespace User.API.Controllers.Profile
                 DistributedCacheEntryOptions options = new DistributedCacheEntryOptions().SetAbsoluteExpiration(TimeSpan.FromMinutes(3));
                 options.SetSlidingExpiration(TimeSpan.FromSeconds(60));
                 //将数据存入Redis
-                await _distributedCache.SetStringAsync(queryUUID.ToString() + "BriefUserInfo", JsonSerializer.Serialize(briefUserInformation), options);
+                _ = _distributedCache.SetStringAsync(queryUUID.ToString() + "BriefUserInfo", JsonSerializer.Serialize(briefUserInformation), options);
 
                 ResponseT<BriefUserInformation> getInformationSucceed = new(0, "获取成功", briefUserInformation);
                 return Ok(getInformationSucceed);

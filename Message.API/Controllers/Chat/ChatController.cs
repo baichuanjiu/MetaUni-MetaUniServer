@@ -78,9 +78,9 @@ namespace Message.API.Controllers.Chat
         //依赖注入
         private readonly UserContext _userContext;
         private readonly MessageContext _messageContext;
-        private readonly ILogger<ProfileController> _logger;
+        private readonly ILogger<ChatController> _logger;
 
-        public ChatController(UserContext userContext, MessageContext messageContext, ILogger<ProfileController> logger)
+        public ChatController(UserContext userContext, MessageContext messageContext, ILogger<ChatController> logger)
         {
             _userContext = userContext;
             _messageContext = messageContext;
