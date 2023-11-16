@@ -1,0 +1,17 @@
+{
+  "profiles": {
+    "Docker Compose": {
+      "commandName": "DockerCompose",
+      "commandVersion": "1.0",
+      "serviceActions": {
+        "user.api": "StartDebugging",
+        "websocket.api": "StartDebugging",
+        "message.api": "StartDebugging",
+        "miniapp.api": "StartDebugging",
+        "hostedservice": "StartDebugging",
+        "feed.api": "StartDebugging",
+        "version.api": "StartDebugging"
+      }
+    }
+  }
+}

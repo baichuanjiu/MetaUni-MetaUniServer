@@ -1,0 +1,206 @@
+version: '3.4'
+
+services:
+  user.api:
+    image: ${DOCKER_REGISTRY-}userapi
+    build:
+      context: .
+      dockerfile: User.API/Dockerfile
+    ports:
+      - 46664:80
+      - 46665:443
+    environment:
+      TZ: Asia/Shanghai
+      Consul__ID: User.API.46664
+      Consul__Name: MetaUni.User.API
+      Consul__IP: host.docker.internal
+      Consul__Port: 46664
+
+  user.api2:
+    image: ${DOCKER_REGISTRY-}userapi
+    build:
+     context: .
+     dockerfile: User.API/Dockerfile
+    ports:
+      - 46668:80
+      - 46669:443
+    environment:
+      TZ: Asia/Shanghai
+      Consul__ID: User.API.46668
+      Consul__Name: MetaUni.User.API
+      Consul__IP: host.docker.internal
+      Consul__Port: 46668
+
+  websocket.api:
+    image: ${DOCKER_REGISTRY-}websocketapi
+    build:
+      context: .
+      dockerfile: WebSocket.API/Dockerfile
+    ports:
+      - 46674:80
+      - 46675:443
+    environment:
+      TZ: Asia/Shanghai
+      Consul__ID: WebSocket.API.46674
+      Consul__Name: MetaUni.WebSocket.API
+      Consul__IP: host.docker.internal
+      Consul__Port: 46674
+
+  websocket.api2:
+    image: ${DOCKER_REGISTRY-}websocketapi
+    build:
+      context: .
+      dockerfile: WebSocket.API/Dockerfile
+    ports:
+      - 46676:80
+      - 46677:443
+    environment:
+      TZ: Asia/Shanghai
+      Consul__ID: WebSocket.API.46676
+      Consul__Name: MetaUni.WebSocket.API
+      Consul__IP: host.docker.internal
+      Consul__Port: 46676
+
+  websocket.api3:
+    image: ${DOCKER_REGISTRY-}websocketapi
+    build:
+      context: .
+      dockerfile: WebSocket.API/Dockerfile
+    ports:
+      - 46678:80
+      - 46679:443
+    environment:
+      TZ: Asia/Shanghai
+      Consul__ID: WebSocket.API.46678
+      Consul__Name: MetaUni.WebSocket.API
+      Consul__IP: host.docker.internal
+      Consul__Port: 46678
+
+  message.api:
+    image: ${DOCKER_REGISTRY-}messageapi
+    build:
+      context: .
+      dockerfile: Message.API/Dockerfile
+    ports:
+      - 46684:80
+      - 46685:443
+    environment:
+      TZ: Asia/Shanghai
+      Consul__ID: Message.API.46684
+      Consul__Name: MetaUni.Message.API
+      Consul__IP: host.docker.internal
+      Consul__Port: 46684
+
+  message.api2:
+    image: ${DOCKER_REGISTRY-}messageapi
+    build:
+      context: .
+      dockerfile: Message.API/Dockerfile
+    ports:
+      - 46686:80
+      - 46687:443
+    environment:
+      TZ: Asia/Shanghai
+      Consul__ID: Message.API.46686
+      Consul__Name: MetaUni.Message.API
+      Consul__IP: host.docker.internal
+      Consul__Port: 46686
+
+  message.api3:
+    image: ${DOCKER_REGISTRY-}messageapi
+    build:
+      context: .
+      dockerfile: Message.API/Dockerfile
+    ports:
+      - 46688:80
+      - 46689:443
+    environment:
+      TZ: Asia/Shanghai
+      Consul__ID: Message.API.46688
+      Consul__Name: MetaUni.Message.API
+      Consul__IP: host.docker.internal
+      Consul__Port: 46688
+
+  miniapp.api:
+    image: ${DOCKER_REGISTRY-}miniappapi
+    build:
+      context: .
+      dockerfile: MiniApp.API/Dockerfile
+    ports:
+      - 46694:80
+      - 46695:443
+    environment:
+      TZ: Asia/Shanghai
+      Consul__ID: MiniApp.API.46694
+      Consul__Name: MetaUni.MiniApp.API
+      Consul__IP: host.docker.internal
+      Consul__Port: 46694
+
+  miniapp.api2:
+    image: ${DOCKER_REGISTRY-}miniappapi
+    build:
+      context: .
+      dockerfile: MiniApp.API/Dockerfile
+    ports:
+      - 46696:80
+      - 46697:443
+    environment:
+      TZ: Asia/Shanghai
+      Consul__ID: MiniApp.API.46696
+      Consul__Name: MetaUni.MiniApp.API
+      Consul__IP: host.docker.internal
+      Consul__Port: 46696
+
+  hostedservice:
+    image: ${DOCKER_REGISTRY-}hostedservice
+    build:
+      context: .
+      dockerfile: HostedService/Dockerfile
+    environment:
+      TZ: Asia/Shanghai
+
+  feed.api:
+    image: ${DOCKER_REGISTRY-}feedapi
+    build:
+      context: .
+      dockerfile: Feed.API/Dockerfile
+    ports:
+      - 47701:80
+      - 47702:443
+    environment:
+      TZ: Asia/Shanghai
+      Consul__ID: Feed.API.47701
+      Consul__Name: MetaUni.Feed.API
+      Consul__IP: host.docker.internal
+      Consul__Port: 47701
+
+  feed.api2:
+    image: ${DOCKER_REGISTRY-}feedapi
+    build:
+      context: .
+      dockerfile: Feed.API/Dockerfile
+    ports:
+      - 47703:80
+      - 47704:443
+    environment:
+      TZ: Asia/Shanghai
+      Consul__ID: Feed.API.47703
+      Consul__Name: MetaUni.Feed.API
+      Consul__IP: host.docker.internal
+      Consul__Port: 47703
+
+  version.api:
+    image: ${DOCKER_REGISTRY-}versionapi
+    build:
+      context: .
+      dockerfile: Version.API/Dockerfile
+    ports:
+      - 47705:80
+      - 47706:443
+    environment:
+      TZ: Asia/Shanghai
+      Consul__ID: Version.API.47705
+      Consul__Name: MetaUni.Version.API
+      Consul__IP: host.docker.internal
+      Consul__Port: 47705
+
